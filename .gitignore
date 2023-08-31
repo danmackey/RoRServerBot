@@ -189,6 +189,7 @@ poetry.toml
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 
+*.log.*
 RoRservices.log
 recordings/*
 configuration.xml
