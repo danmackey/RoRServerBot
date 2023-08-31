@@ -1,16 +1,27 @@
-import threading, time, queue, sys, os, logging, copy, requests, json
-from xml.etree import ElementTree as ET # used to parse xml, for the config file
-import RoR_client
-import discord
-from discord.ext.tasks import loop
 import asyncio
+import copy
+import json
+import logging
+import os
+import queue
+import sys
+import threading
+import time
+# used to parse xml, for the config file
+from xml.etree import ElementTree as ET
 
-# pure black fucking magic, 
+import discord
+import requests
+import RoR_client
+from discord.ext.tasks import loop
+
+# pure black fucking magic,
 # suppresses annoying proactor exceptions caused by windows asyncio and aiohttp
 if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 import logging
+
 logging.basicConfig(
     level=logging.ERROR,
     style="{",
@@ -23,9 +34,10 @@ logging.basicConfig(
 # It will not exit if it loses connection to a (or even all) RoR servers!
 # You can restart crashed/stopped RoR clients via the !connect command
 
+
 class Config:
 
-    def __init__(self, configfile):
+    def __init__(self, configfile: str):
         self.logger = logging.getLogger('config')
         self.logger.info("Reading configuration file %s", configfile)
 
@@ -35,7 +47,7 @@ class Config:
 
         self.logger.debug("Configuration read.")
 
-    def readConfig(self, configfile):
+    def readConfig(self, configfile: str):
         # get the path to the file
         xml_file = os.path.abspath(__file__)
         xml_file = os.path.dirname(xml_file)
@@ -45,7 +57,8 @@ class Config:
         try:
             tree = ET.parse(xml_file)
         except Exception as inst:
-            self.logger.critical("Unexpected error opening %s: %s" % (xml_file, inst))
+            self.logger.critical(
+                "Unexpected error opening %s: %s" % (xml_file, inst))
             sys.exit(1)
 
         # now, we can start processing data
@@ -53,49 +66,47 @@ class Config:
         # configuration file are more likely to get noticed
         element = tree.getroot()
 
-
         # A RoRclient template.
         # This will be changed to the user-defined template later on
         defaultRoRclient = {
-                'ID': None,
+            'ID': None,
 
-                'host': None,
-                'port': 0,
-                'password': '',
+            'host': None,
+            'port': 0,
+            'password': '',
 
-                'username': 'services',
-                'usertoken': '',
-                'userlanguage': 'en_UK',
+            'username': 'services',
+            'usertoken': '',
+            'userlanguage': 'en_UK',
 
-                'discordchannel': None,
+            'discordchannel': None,
 
-                'announcementsEnabled': False,
-                'announcementsDelay': 300,
-                'announcementList': {
-                        # 'announcementNumber': {
-                                # 'text': '',
-                        # },
-                },
+            'announcementsEnabled': False,
+            'announcementsDelay': 300,
+            'announcementList': {
+                # 'announcementNumber': {
+                # 'text': '',
+                # },
+            },
 
-                'reconnection_interval': 5,
-                'reconnection_tries': 3,
+            'reconnection_interval': 5,
+            'reconnection_tries': 3,
         }
 
         # Fill the whole settings dictionary with default values
         self.settings = {
-                'general': {
-                        'version_str': 'RoR server-services v2022.04',
-                        'version_num': "2022.04",
-                        'clientname': 'RoR_bot',
-                },
-                'Discordclient': {
-                    'token': '',
-                },
-                'RoRclients': {
+            'general': {
+                'version_str': 'RoR server-services v2022.04',
+                'version_num': "2022.04",
+                'clientname': 'RoR_bot',
+            },
+            'Discordclient': {
+                'token': '',
+            },
+            'RoRclients': {
 
-                },
+            },
         }
-
 
         # start processing the configuration.
 
@@ -104,9 +115,11 @@ class Config:
 
             # if an element <bot> exists in <Discordclient>
             if not element.find("./Discordclient/bot") is None:
-                self.settings['Discordclient']['token'] = element.find("Discordclient/bot").get("token")
+                self.settings['Discordclient']['token'] = element.find(
+                    "Discordclient/bot").get("token")
             else:
-                self.logger.critical("In configuration.xml: Discordclient/bot needs to be set!")
+                self.logger.critical(
+                    "In configuration.xml: Discordclient/bot needs to be set!")
                 sys.exit(1)
         else:
             self.logger.critical("No Discordclient section found!")
@@ -119,9 +132,11 @@ class Config:
 
             # search for an element with id="default/template"
             for RoRclient in RoRclients:
-                if RoRclient.get("id", default="")=="default/template":
-                    self.logger.info("Parsing template-RoRclient 'default/template'")
-                    self.parseRoRclient("default/template", RoRclient, defaultRoRclient)
+                if RoRclient.get("id", default="") == "default/template":
+                    self.logger.info(
+                        "Parsing template-RoRclient 'default/template'")
+                    self.parseRoRclient("default/template",
+                                        RoRclient, defaultRoRclient)
                     break
 
             for RoRclient in RoRclients:
@@ -132,28 +147,31 @@ class Config:
                 else:
                     ID = "RoR %d" % id
 
-                if RoRclient.get("id", default="")=="default/template":
+                if RoRclient.get("id", default="") == "default/template":
                     continue
 
                 if not RoRclient.get("enabled") is None:
                     if RoRclient.get("enabled") != "yes" and RoRclient.get("enabled") != "true" and RoRclient.get("enabled") != "1":
-                        self.logger.info("RoRclient %s skipped. Disabled on request.", ID)
+                        self.logger.info(
+                            "RoRclient %s skipped. Disabled on request.", ID)
                         continue
                 if not RoRclient.get("disabled") is None:
                     if RoRclient.get("disabled") == "yes" or RoRclient.get("disabled") == "true" or RoRclient.get("disabled") == "1":
-                        self.logger.info("RoRclient %s skipped. Disabled on request.", ID)
+                        self.logger.info(
+                            "RoRclient %s skipped. Disabled on request.", ID)
                         continue
 
                 id += 1
 
-                self.settings['RoRclients'][ID] = copy.deepcopy(defaultRoRclient)
+                self.settings['RoRclients'][ID] = copy.deepcopy(
+                    defaultRoRclient)
                 self.settings['RoRclients'][ID]['ID'] = ID
                 if not self.parseRoRclient(ID, RoRclient, self.settings['RoRclients'][ID]):
                     del self.settings['RoRclients'][ID]
 
-
-            if len(self.settings['RoRclients'])<=0:
-                self.logger.critical("No 'RoRclient' elements found in the configuration file.")
+            if len(self.settings['RoRclients']) <= 0:
+                self.logger.critical(
+                    "No 'RoRclient' elements found in the configuration file.")
                 sys.exit(1)
             del RoRclients
         else:
@@ -165,40 +183,50 @@ class Config:
         # log some things
         self.logger.info("Successfully parsed the following servers:")
         for RoRclient in self.settings['RoRclients']:
-            self.logger.info("   - %s:%d - user: %s - channel %s ", self.settings['RoRclients'][RoRclient]['host'], self.settings['RoRclients'][RoRclient]['port'], self.settings['RoRclients'][RoRclient]['username'], self.settings['RoRclients'][RoRclient]['discordchannel'])
+            self.logger.info("   - %s:%d - user: %s - channel %s ", self.settings['RoRclients'][RoRclient]['host'], self.settings['RoRclients']
+                             [RoRclient]['port'], self.settings['RoRclients'][RoRclient]['username'], self.settings['RoRclients'][RoRclient]['discordchannel'])
 
-    def parseRoRclient(self, ID, RoRclient, s):
+    def parseRoRclient(self, ID: str, RoRclient, s):
 
         # if an element <server> exists
         if not RoRclient.find("./server") is None:
-            s['host']     = RoRclient.find("./server").get("host", default=s['host'])
-            s['port'] = int(RoRclient.find("./server").get("port", default=s['port']))
-            s['password'] = RoRclient.find("./server").get("password", default=s['password'])
-        if ( s['host'] is None or s['port']==0 ) and ID != "default/template":
-            self.logger.error("configuration/RoRclients/RoRclient(%s)/server[@host, @port] needs to be set!", ID)
+            s['host'] = RoRclient.find(
+                "./server").get("host", default=s['host'])
+            s['port'] = int(RoRclient.find(
+                "./server").get("port", default=s['port']))
+            s['password'] = RoRclient.find(
+                "./server").get("password", default=s['password'])
+        if (s['host'] is None or s['port'] == 0) and ID != "default/template":
+            self.logger.error(
+                "configuration/RoRclients/RoRclient(%s)/server[@host, @port] needs to be set!", ID)
             self.logger.error("Ignoring RoRclient(%s)", ID)
             return False
 
-
         # if an element <discord> exists
         if not RoRclient.find("./discord") is None:
-            s['discordchannel'] = RoRclient.find("./discord").get("channel", default=s['discordchannel']).lower()
-        if ( RoRclient.find("./discord") is None or s['discordchannel'] is None ) and ID != "default/template":
-            self.logger.error("configuration/RoRclients/RoRclient(%s)/discord[@channel] needs to be set!", ID)
+            s['discordchannel'] = RoRclient.find(
+                "./discord").get("channel", default=s['discordchannel']).lower()
+        if (RoRclient.find("./discord") is None or s['discordchannel'] is None) and ID != "default/template":
+            self.logger.error(
+                "configuration/RoRclients/RoRclient(%s)/discord[@channel] needs to be set!", ID)
             self.logger.error("Ignoring RoRclient(%s)", ID)
             return False
 
         # if an element <user> exists
         if not RoRclient.find("./user") is None:
-            s['username']     = RoRclient.find("./user").get("name", default=s['username'])
-            s['usertoken']    = RoRclient.find("./user").get("token", default=s['usertoken'])
-            s['userlanguage'] = RoRclient.find("./user").get("language", default=s['userlanguage'])
+            s['username'] = RoRclient.find(
+                "./user").get("name", default=s['username'])
+            s['usertoken'] = RoRclient.find(
+                "./user").get("token", default=s['usertoken'])
+            s['userlanguage'] = RoRclient.find(
+                "./user").get("language", default=s['userlanguage'])
 
         # if an element <announcements> exists
         if not RoRclient.find("./announcements") is None:
             announcements = RoRclient.find("./announcements")
 
-            s['announcementsDelay'] = int(announcements.get("delay", default=s['announcementsDelay']))
+            s['announcementsDelay'] = int(announcements.get(
+                "delay", default=s['announcementsDelay']))
 
             counter = 0
             for announcement in announcements:
@@ -212,7 +240,8 @@ class Config:
 
             if not announcements.get("enabled") is None:
                 if announcements.get("enabled") != "yes" and announcements.get("enabled") != "true" and announcements.get("enabled") != "1":
-                    self.logger.info("Announcements of %s disabled on request.", ID)
+                    self.logger.info(
+                        "Announcements of %s disabled on request.", ID)
                     s['announcementsEnabled'] = False
 
         return True
@@ -242,18 +271,24 @@ class Config:
                     if not C is None:
                         if not D is None:
                             if not E is None:
-                                self.logger.exception("Setting did not exist in Config.getSetting('%s', '%s', '%s', '%s', '%s')", A, B, C, D, E)
+                                self.logger.exception(
+                                    "Setting did not exist in Config.getSetting('%s', '%s', '%s', '%s', '%s')", A, B, C, D, E)
                             else:
-                                self.logger.exception("Setting did not exist in Config.getSetting('%s', '%s', '%s', '%s')", A, B, C, D)
+                                self.logger.exception(
+                                    "Setting did not exist in Config.getSetting('%s', '%s', '%s', '%s')", A, B, C, D)
                         else:
-                            self.logger.exception("Setting did not exist in Config.getSetting('%s', '%s', '%s')", A, B, C)
+                            self.logger.exception(
+                                "Setting did not exist in Config.getSetting('%s', '%s', '%s')", A, B, C)
                     else:
-                        self.logger.exception("Setting did not exist in Config.getSetting('%s', '%s')", A, B)
+                        self.logger.exception(
+                            "Setting did not exist in Config.getSetting('%s', '%s')", A, B)
                 else:
-                    self.logger.exception("Setting did not exist in Config.getSetting('%s')", A)
+                    self.logger.exception(
+                        "Setting did not exist in Config.getSetting('%s')", A)
             else:
                 self.logger.error("getSetting called without any arguments!")
             return None
+
 
 class Main(discord.Client):
 
@@ -279,14 +314,16 @@ class Main(discord.Client):
 
     def messageRoRclient(self, ID, data):
         try:
-            self.RoRqueue[ID].put_nowait( data )
+            self.RoRqueue[ID].put_nowait(data)
         except queue.Full:
-            self.logger.warning("queue to RoRclient %s is full. Message dropped.", ID)
+            self.logger.warning(
+                "queue to RoRclient %s is full. Message dropped.", ID)
             return False
         return True
 
     def messageRoRclientByChannel(self, channel, data):
-        self.logger.debug("Inside messageRoRclientByChannel(%s, data)", str(channel))
+        self.logger.debug(
+            "Inside messageRoRclientByChannel(%s, data)", str(channel))
         for ID in self.settings.getSetting('RoRclients').keys():
             self.logger.debug("   checking ID %s", ID)
             if self.settings.getSetting('RoRclients', ID, "discordchannel") == str(channel):
@@ -295,7 +332,7 @@ class Main(discord.Client):
 
     def messageMain(self, data):
         try:
-            self.queue_to_main.put_nowait( data )
+            self.queue_to_main.put_nowait(data)
         except queue.Full:
             self.logger.warning("queue to main is full. Message dropped.")
             return False
@@ -328,7 +365,8 @@ class Main(discord.Client):
         return False
 
     def queueKick(self, cid, uid):
-        self.messageRoRclientByChannel(cid, ("kick", int(uid), "spawning a banned vehicle"))
+        self.messageRoRclientByChannel(
+            cid, ("kick", int(uid), "spawning a banned vehicle"))
 
     async def addVehicleBan(self, cid, truck):
         channel = self.get_channel(int(cid))
@@ -391,8 +429,10 @@ class Main(discord.Client):
 
     async def api(self, cid):
         channel = self.get_channel(int(cid))
-        request = requests.get('https://api.rigsofrods.org/server-list?json', timeout=2)
-        embed = discord.Embed(title="Servers", url="https://forum.rigsofrods.org/multiplayer/", colour=0x3498DB)
+        request = requests.get(
+            'https://api.rigsofrods.org/server-list?json', timeout=2)
+        embed = discord.Embed(
+            title="Servers", url="https://forum.rigsofrods.org/multiplayer/", colour=0x3498DB)
 
         a = 0
         b = 0
@@ -423,14 +463,16 @@ class Main(discord.Client):
                 else:
                     players += '*' + player['username'] + '*' + ', '
 
-            embed.add_field(name="%s%s (%s/%s)%s" % (official, name, users, max_users, password), value="%s | %s\n%s:%s\n%s" % (version, terrain, ip, port, players[:-2]), inline=False)
+            embed.add_field(name="%s%s (%s/%s)%s" % (official, name, users, max_users, password),
+                            value="%s | %s\n%s:%s\n%s" % (version, terrain, ip, port, players[:-2]), inline=False)
 
-        embed.add_field(name="Summary", value="There are **%s** servers with **%s** players online." % (a, b), inline=False)
+        embed.add_field(
+            name="Summary", value="There are **%s** servers with **%s** players online." % (a, b), inline=False)
         await channel.send(embed=embed)
 
     async def on_ready(self):
         self.logger.info("Logged into Discord as %s", self.user)
-        print ("Logged into Discord as ", self.user)
+        print("Logged into Discord as ", self.user)
 
         if not self.initialised:
             RoRclients_tmp = self.settings.getSetting('RoRclients')
@@ -447,22 +489,28 @@ class Main(discord.Client):
             return
 
         if message.content.startswith('!list'):
-            self.messageRoRclientByChannel(message.channel.id, ("msg", "!list"))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("msg", "!list"))
 
         if message.content.startswith('!playerlist'):
-            self.messageRoRclientByChannel(message.channel.id, ("list_players",))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("list_players",))
 
         if message.content.startswith('!info'):
-            self.messageRoRclientByChannel(message.channel.id, ("info", "full"))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("info", "full"))
 
         if message.content.startswith('!msg'):
-            self.messageRoRclientByChannel(message.channel.id, ("msg_with_source", message.content.replace('!msg' , ''), message.author))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("msg_with_source", message.content.replace('!msg', ''), message.author))
 
         if message.content.startswith('!rawmsg'):
-            self.messageRoRclientByChannel(message.channel.id, ("msg", message.content.replace('!rawmsg ' , '')))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("msg", message.content.replace('!rawmsg ', '')))
 
         if message.content.startswith('!disconnect'):
-            self.messageRoRclientByChannel(message.channel.id, ("disconnect", "Leaving server..."))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("disconnect", "Leaving server..."))
 
         if message.content.startswith('!connect'):
             self.startRoRclientOnDemand(message.channel.id)
@@ -475,29 +523,34 @@ class Main(discord.Client):
             args = message.content.split(" ", 2)
 
             if len(args) == 3:
-                self.messageRoRclientByChannel(message.channel.id, ("kick", int(args[1]), args[2]))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("kick", int(args[1]), args[2]))
             elif len(args) == 2:
-                self.messageRoRclientByChannel(message.channel.id, ("kick", int(args[1]), "an unspecified reason"))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("kick", int(args[1]), "an unspecified reason"))
             elif self.checkDiscordChannel(message.channel.id):
                 await message.channel.send('[info] Syntax: !kick <uid> [reason]')
 
         if message.content.startswith('!ban') and self.checkDiscordChannel(message.channel.id):
             if "!bans" in message.content:
-                self.messageRoRclientByChannel(message.channel.id, ("msg", "!bans"))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("msg", "!bans"))
             elif "!banvehicle" in message.content:
                 args = message.content.split(" ", 1)
 
                 if len(args) == 2:
-                    await self.addVehicleBan(message.channel.id, message.content.replace('!banvehicle ' , ''))
+                    await self.addVehicleBan(message.channel.id, message.content.replace('!banvehicle ', ''))
                 else:
                     await message.channel.send('[info] Syntax: !banvehicle <truck>')
             else:
                 args = message.content.split(" ", 2)
 
                 if len(args) == 3:
-                    self.messageRoRclientByChannel(message.channel.id, ("ban", int(args[1]), args[2]))
+                    self.messageRoRclientByChannel(
+                        message.channel.id, ("ban", int(args[1]), args[2]))
                 elif len(args) == 2:
-                    self.messageRoRclientByChannel(message.channel.id, ("ban", int(args[1]), "an unspecified reason"))
+                    self.messageRoRclientByChannel(
+                        message.channel.id, ("ban", int(args[1]), "an unspecified reason"))
                 else:
                     await message.channel.send('[info] Syntax: !ban <uid> [reason]')
 
@@ -505,9 +558,11 @@ class Main(discord.Client):
             args = message.content.split(" ", 2)
 
             if len(args) == 3:
-                self.messageRoRclientByChannel(message.channel.id, ("say", int(args[1]), args[2]))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("say", int(args[1]), args[2]))
             elif len(args) == 2:
-                self.messageRoRclientByChannel(message.channel.id, ("say", int(args[1]), "This is an official warning. Please read our rules using the !rules command."))
+                self.messageRoRclientByChannel(message.channel.id, ("say", int(
+                    args[1]), "This is an official warning. Please read our rules using the !rules command."))
             elif self.checkDiscordChannel(message.channel.id):
                 await message.channel.send('[info] Syntax: !warn <uid> [reason]')
 
@@ -515,9 +570,11 @@ class Main(discord.Client):
             args = message.content.split(" ", 2)
 
             if len(args) == 3:
-                self.messageRoRclientByChannel(message.channel.id, ("say", int(args[1]), args[2]))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("say", int(args[1]), args[2]))
             elif len(args) == 2:
-                self.messageRoRclientByChannel(message.channel.id, ("say", int(-1), args[1]))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("say", int(-1), args[1]))
             elif self.checkDiscordChannel(message.channel.id):
                 await message.channel.send('[info] Syntax: !say [message] or !say <uid> [message]')
 
@@ -526,14 +583,16 @@ class Main(discord.Client):
                 args = message.content.split(" ", 1)
 
                 if len(args) == 2:
-                    await self.removeVehicleBan(message.channel.id, message.content.replace('!unbanvehicle ' , ''))
+                    await self.removeVehicleBan(message.channel.id, message.content.replace('!unbanvehicle ', ''))
                 else:
                     await message.channel.send('[info] Syntax: !unbanvehicle <truck>')
             else:
-                self.messageRoRclientByChannel(message.channel.id, ("msg", message.content))
+                self.messageRoRclientByChannel(
+                    message.channel.id, ("msg", message.content))
 
         if message.content.startswith('!stats'):
-            self.messageRoRclientByChannel(message.channel.id, ("global_stats",))
+            self.messageRoRclientByChannel(
+                message.channel.id, ("global_stats",))
 
         if message.content.startswith('!fps'):
             self.messageRoRclientByChannel(message.channel.id, ("fps",))
@@ -591,16 +650,21 @@ class Main(discord.Client):
             if self.RoRclients[ID].is_alive():
                 self.logger.error("   x Failed to terminate RoRclient %s" % ID)
         self.logger.info("RoRclients shutdown sequence successfully finished.")
-        self.logger.info("   - waiting for some tasks to finish before exiting.")
-        await asyncio.sleep(5) # let any remaining tasks queued by RoRclients finish
+        self.logger.info(
+            "   - waiting for some tasks to finish before exiting.")
+        # let any remaining tasks queued by RoRclients finish
+        await asyncio.sleep(5)
 
         # close loggers:
         logging.shutdown()
         await super().close()
 
+
 intents = discord.Intents.default()
 intents.message_content = True
-       
+
 client = Main(intents=intents)
-client.logger.warning('expect a slowdown when requesting guild information from Discord!')
-client.run(client.settings.getSetting("Discordclient", "token"), log_handler=None)
+client.logger.warning(
+    'expect a slowdown when requesting guild information from Discord!')
+client.run(client.settings.getSetting(
+    "Discordclient", "token"), log_handler=None)
