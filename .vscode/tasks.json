@@ -1,61 +1,59 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Build",
-      "command": "${command:python.interpreterPath}",
-      "type": "process",
-      "args": [
-        "-m",
-        "build"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "dedicated",
-        "showReuseMessage": true,
-        "clear": true
-      },
-      "windows": {
-        "command": "${workspaceFolder}\\venv\\Scripts\\python.exe"
-      }
-    },
-    {
-      "label": "Tox",
-      "command": "${command:python.interpreterPath}",
-      "type": "process",
-      "args": [
-        "-m",
-        "tox",
-        "--parallel=auto",
-        "--recreate"
-      ],
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated",
-        "showReuseMessage": true,
-        "clear": true
-      },
-      "windows": {
-        "command": "${workspaceFolder}\\venv\\Scripts\\python.exe"
-      }
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Tox",
+            "icon": {
+                "id": "beaker"
+            },
+            "command": "${command:python.interpreterPath}",
+            "type": "process",
+            "args": [
+                "-m",
+                "tox",
+                "--parallel=auto",
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "windows": {
+                "command": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+            }
+        },
+        {
+            "label": "Sync Dependencies",
+            "icon": {
+                "id": "sync"
+            },
+            "command": "hatch",
+            "args": [
+                "shell",
+                "default",
+                "--",
+                "pip",
+                "list"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [ ]
+        }
+    ]
 }
