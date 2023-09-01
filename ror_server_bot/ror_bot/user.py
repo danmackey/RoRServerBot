@@ -18,18 +18,24 @@ class StreamNotFoundError(Exception):
 
 
 class CurrentStream(BaseModel):
+    """The current stream of the user. This could be a character or an
+    actor. The unique_id is the user associated with the stream. If the
+    unique_id does not match the user's unique_id, then the user is in
+    another user's vehicle."""
+
     unique_id: int = -1
     stream_id: int = -1
 
 
 class User(BaseModel):
     info: UserInfo
-    streams: dict[int, StreamRegister] = Field(default={})
-    stats: UserStats = UserStats()
+
     character_stream_id: int = -1
     chat_stream_id: int = -1
-
+    stats: UserStats = UserStats()
     current_stream: CurrentStream = CurrentStream()
+    streams: dict[int, StreamRegister] = Field(default={})
+    """Streams registered to the user."""
 
     @property
     def auth_status(self) -> AuthLevels:
