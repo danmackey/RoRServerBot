@@ -12,7 +12,9 @@ from ror_server_bot.ror_bot.enums import (
     CharacterAnimation,
     CharacterCommand,
     Color,
+    LightMask,
     MessageType,
+    NetMask,
     PlayerColor,
     StreamType,
 )
@@ -560,19 +562,28 @@ class CharacterDetachStreamData(Message):
         return super().pack()
 
 
+# TODO: Add support for node_data, wheel_data, and animation_key_states
+"""
+node_data is a list of 3f (x, y, z) values that represent the position
+of each node in the vehicle. The data is sent as 3h (short) values and
+are compressed by a factor that is unique to each vehicle,
+m_net_node_compression. The node_data includes camera nodes.
+"""
+
 class VehicleStreamData(Message):
-    STRUCT_FORMAT: ClassVar[str] = 'IfffIfffI3f'
+    STRUCT_FORMAT: ClassVar[str] = 'ifffifffII3f'
     """The struct format of the vehicle state data.
     ```
-    I: time
+    i: time
     f: engine_speed
     f: engine_force
     f: engine_clutch
-    I: engine_gear
+    i: engine_gear
     f: steering
     f: brake
     f: wheel_speed
     I: flag_mask
+    I: light_mask
     3f: position
     Xs: node_data
     ```
@@ -586,7 +597,8 @@ class VehicleStreamData(Message):
     steering: float
     brake: float
     wheel_speed: float
-    flag_mask: int
+    flag_mask: NetMask
+    light_mask: LightMask
     position: Vector3
     node_data: bytes
 
