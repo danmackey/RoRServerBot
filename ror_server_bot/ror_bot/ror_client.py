@@ -16,8 +16,7 @@ from .models import (
     UserInfo,
 )
 from .packet_handler import PacketHandler
-from .ror_connection import RoRConnection
-from .stream_manager import UserNotFoundError
+from .ror_connection import RoRConnection, UserNotFoundError
 from .user import StreamNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -256,7 +255,7 @@ class RoRClient(PacketHandler):
 
         user_info = UserInfo.from_bytes(packet.data)
 
-        self.server.stream_manager.add_user(user_info)
+        self.server.add_user(user_info)
 
         if user_info.unique_id != self.server.unique_id:
             self.emit(RoRClientEvents.USER_JOIN, packet.source, user_info)
@@ -273,7 +272,7 @@ class RoRClient(PacketHandler):
 
         user_info = UserInfo.from_bytes(packet.data)
 
-        self.server.stream_manager.add_user(user_info)
+        self.server.add_user(user_info)
 
         if user_info.unique_id != self.server.unique_id:
             self.emit(RoRClientEvents.USER_INFO, packet.source, user_info)
@@ -295,7 +294,7 @@ class RoRClient(PacketHandler):
         if packet.source == self.server.unique_id:
             raise ConnectionError('RoRClient disconnected from the server')
 
-        self.server.stream_manager.delete_user(packet.source)
+        self.server.delete_user(packet.source)
 
         self.emit(RoRClientEvents.USER_LEAVE, packet.source)
 
@@ -329,7 +328,7 @@ class RoRClient(PacketHandler):
 
         logger.info('Stream register received: %s', stream)
 
-        self.server.stream_manager.add_stream(stream)
+        self.server.add_stream(stream)
 
         if stream.type is StreamType.ACTOR:
             # why?
@@ -364,7 +363,7 @@ class RoRClient(PacketHandler):
             return
 
         try:
-            stream = self.server.stream_manager.get_stream(
+            stream = self.server.get_stream(
                 packet.source,
                 packet.stream_id
             )
@@ -412,7 +411,7 @@ class RoRClient(PacketHandler):
 
         logger.info('Stream unregister received: %s', packet)
 
-        self.server.stream_manager.delete_stream(
+        self.server.delete_stream(
             packet.source,
             packet.stream_id
         )
