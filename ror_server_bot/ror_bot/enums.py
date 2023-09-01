@@ -1,4 +1,4 @@
-from enum import auto, Enum, IntEnum
+from enum import auto, Enum, IntEnum, IntFlag
 
 
 # names from https://www.color-name.com/
@@ -123,18 +123,18 @@ class StreamType(IntEnum):
     CHAT = 3
 
 
-class AuthLevels(IntEnum):
+class AuthLevels(IntFlag):
     NONE = 0
     """no authentication"""
-    ADMIN = 1
+    ADMIN = auto()
     """admin on the server"""
-    RANKED = 2
+    RANKED = auto()
     """ranked status"""
-    MOD = 4
+    MOD = auto()
     """moderator status"""
-    BOT = 8
+    BOT = auto()
     """bot status"""
-    BANNED = 16
+    BANNED = auto()
     """banned"""
 
     @classmethod
@@ -159,7 +159,7 @@ class AuthLevels(IntEnum):
         return self.get_auth_str(self)
 
 
-class NetMask(IntEnum):
+class NetMask(IntFlag):
     HORN = 1
     """Horn is in use."""
     POLICE_AUDIO = auto()
@@ -188,21 +188,21 @@ class NetMask(IntEnum):
     """Using manual transmission with ranges."""
 
 
-class LightMask(IntEnum):
-    CUSTOM_LIGHT_1 = 1
-    CUSTOM_LIGHT_2 = auto()
-    CUSTOM_LIGHT_3 = auto()
-    CUSTOM_LIGHT_4 = auto()
-    CUSTOM_LIGHT_5 = auto()
-    CUSTOM_LIGHT_6 = auto()
-    CUSTOM_LIGHT_7 = auto()
-    CUSTOM_LIGHT_8 = auto()
-    CUSTOM_LIGHT_9 = auto()
-    CUSTOM_LIGHT_10 = auto()
+class LightMask(IntFlag):
+    CUSTOM_1 = 1
+    CUSTOM_2 = auto()
+    CUSTOM_3 = auto()
+    CUSTOM_4 = auto()
+    CUSTOM_5 = auto()
+    CUSTOM_6 = auto()
+    CUSTOM_7 = auto()
+    CUSTOM_8 = auto()
+    CUSTOM_9 = auto()
+    CUSTOM_10 = auto()
     HEADLIGHT = auto()
-    HIGHBEAMS = auto()
-    FOGLIGHTS = auto()
-    SIDELIGHTS = auto()
+    HIGH_BEAMS = auto()
+    FOG_LIGHTS = auto()
+    SIDE_LIGHTS = auto()
     BRAKES = auto()
     REVERSE = auto()
     BEACONS = auto()
@@ -210,11 +210,13 @@ class LightMask(IntEnum):
     BLINK_RIGHT = auto()
     BLINK_WARN = auto()
 
+
 class CharacterCommand(IntEnum):
     INVALID = 0
     POSITION = auto()
     ATTACH = auto()
     DETACH = auto()
+
 
 class CharacterAnimation(Enum):
     IDLE_SWAY = "Idle_sway"
