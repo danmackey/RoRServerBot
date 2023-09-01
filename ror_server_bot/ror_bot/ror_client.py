@@ -141,6 +141,23 @@ class RoRClient(PacketHandler):
         """
         logger.error('%r', error, exc_info=True)
 
+    def on(self, event: RoRClientEvents, listener: Callable | None = None):
+        """Decorator to register an event handler on the event emitter.
+
+        :param event: The event to register the handler on.
+        :param listener: The listener to register.
+        """
+        return self.event_emitter.on(event.value, listener)
+
+    def once(self, event: RoRClientEvents, listener: Callable | None = None):
+        """Decorator to register a one-time event handler on the event
+        emitter.
+
+        :param event: The event to register the handler on.
+        :param listener: The listener to register.
+        """
+        return self.event_emitter.once(event.value, listener)
+
     def emit(self, event: RoRClientEvents, *args, **kwargs):
         """Emit an event on the event emitter.
 
