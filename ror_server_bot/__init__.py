@@ -15,25 +15,7 @@ PROJECT_DIRECTORY = Path(__file__).parent
 TRUCK_TO_NAME_FILE = Path('truck_to_name.json')
 
 
-class PFormat(PrettyFormat):
-    def _format_str_bytes(
-        self,
-        value: str | bytes,
-        value_repr: str,
-        indent_current: int,
-        indent_new: int
-    ) -> None:
-        if isinstance(value, bytes):
-            value = value.replace(b'\x00', b'')
-        return super()._format_str_bytes(
-            value,
-            value_repr,
-            indent_current,
-            indent_new
-        )
-
-
-pformat = PFormat(indent_step=2)
+pformat = PrettyFormat(indent_step=2)
 
 stream_handler = logging.StreamHandler(sys.stdout)
 file_handler = handlers.RotatingFileHandler(
