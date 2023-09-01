@@ -38,8 +38,10 @@ if __name__ == '__main__':
         reconnection_tries=3,
     )
 
+    client = RoRClient(config)
+
     async def main():
-        async with RoRClient(config):
+        async with client:
             while True:
                 await asyncio.sleep(0.1)
 
