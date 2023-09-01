@@ -17,16 +17,26 @@ from ror_server_bot.ror_bot.enums import (
     StreamType,
 )
 
-from .validators import strip_nulls_after
 from .vector import Vector3, Vector4
 
 logger = logging.getLogger(__name__)
 
 
-class Sendable(BaseModel):
+def strip_nulls_after(*fields: str):
+    """A validator that strips null characters from provided fields."""
+    def __strip_null_character(v: str) -> str:
+        return v.strip('\x00')
+    return field_validator(
+        *fields,
+        mode='after',
+        check_fields=False
+    )(__strip_null_character)
+
+
+class Message(BaseModel):
     """A sendable object."""
 
-    STRUCT_FORMAT: ClassVar[str] = ''
+    STRUCT_FORMAT: ClassVar[str]
     """The struct format of the object."""
 
     @classmethod
@@ -51,21 +61,22 @@ class Sendable(BaseModel):
     def __str__(self) -> str:
         return pformat(self)
 
+    def __bytes__(self) -> bytes:
+        return self.pack()
+
     def pack(self) -> bytes:
         """Packs the object into bytes.
 
         :return: The object packed into bytes.
         """
-        data = []
-        for value in self.model_dump().values():
-            if isinstance(value, str):
-                data.append(value.encode())
-            else:
-                data.append(value)
-        return struct.pack(self.STRUCT_FORMAT, *data)
+        values = [
+            value.encode() if isinstance(value, str) else value
+            for value in self.model_dump().values()
+        ]
+        return struct.pack(self.STRUCT_FORMAT, *values)
 
 
-class Packet(Sendable):
+class Packet(Message):
     STRUCT_FORMAT: ClassVar[str] = 'IIII'
     """The struct format of the packet header.
     ```
@@ -112,7 +123,7 @@ class Packet(Sendable):
         )
 
 
-class ServerInfo(Sendable):
+class ServerInfo(Message):
     STRUCT_FORMAT: ClassVar[str] = '20s128s128s?4096s'
     """The struct format of the server info data.
     ```
@@ -160,7 +171,7 @@ class ServerInfo(Sendable):
         return super().pack()
 
 
-class UserInfo(Sendable):
+class UserInfo(Message):
     STRUCT_FORMAT: ClassVar[str] = 'Iiii40s40s40s10s10s25s40s10s128s'
     """The struct format of the user info data.
     ```
@@ -261,9 +272,6 @@ class BaseStreamRegister(BaseModel):
     name: str = Field(max_length=128)
     """The name of the stream."""
 
-    def __str__(self) -> str:
-        return pformat(self)
-
     @field_validator('name', mode='before')
     def __strip_null_character(cls, v: str | bytes) -> str:
         if isinstance(v, bytes):
@@ -271,7 +279,7 @@ class BaseStreamRegister(BaseModel):
         return v
 
 
-class GenericStreamRegister(BaseStreamRegister, Sendable):
+class GenericStreamRegister(Message, BaseStreamRegister):
     STRUCT_FORMAT: ClassVar[str] = (BaseStreamRegister.STRUCT_FORMAT + '128s')
     """The struct format of the generic stream register data.
     ```
@@ -332,7 +340,7 @@ class CharacterStreamRegister(GenericStreamRegister):
     reg_data: str = Field(max_length=128)
 
 
-class ActorStreamRegister(BaseStreamRegister):
+class ActorStreamRegister(Message, BaseStreamRegister):
     STRUCT_FORMAT: ClassVar[str] = (
         BaseStreamRegister.STRUCT_FORMAT + 'ii60s60s'
     )
@@ -424,7 +432,7 @@ def stream_register_factory(data: bytes) -> StreamRegister:
     raise ValueError(f'Invalid stream type: {type!r}')
 
 
-class CharacterPositionStreamData(Sendable):
+class CharacterPositionStreamData(Message):
     STRUCT_FORMAT: ClassVar[str] = 'i3fff10s'
     """The struct format of the character position stream data.
     ```
@@ -482,7 +490,7 @@ class CharacterPositionStreamData(Sendable):
         )
 
 
-class CharacterAttachStreamData(Sendable):
+class CharacterAttachStreamData(Message):
     STRUCT_FORMAT: ClassVar[str] = 'iiii'
     """The struct format of the character attach stream data.
     ```
@@ -525,7 +533,7 @@ class CharacterAttachStreamData(Sendable):
         )
 
 
-class CharacterDetachStreamData(Sendable):
+class CharacterDetachStreamData(Message):
     STRUCT_FORMAT: ClassVar[str] = 'i'
     """The struct format of the character detach stream data.
     ```
@@ -552,7 +560,7 @@ class CharacterDetachStreamData(Sendable):
         return super().pack()
 
 
-class VehicleStreamData(Sendable):
+class VehicleStreamData(Message):
     STRUCT_FORMAT: ClassVar[str] = 'IfffIfffI3f'
     """The struct format of the vehicle state data.
     ```

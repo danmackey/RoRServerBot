@@ -1,12 +1,12 @@
 from .config import Config, RoRClientConfig
-from .sendable import (
+from .messages import (
     ActorStreamRegister,
     CharacterAttachStreamData,
     CharacterPositionStreamData,
     CharacterStreamRegister,
     ChatStreamRegister,
+    Message,
     Packet,
-    Sendable,
     ServerInfo,
     stream_data_factory,
     stream_register_factory,
@@ -27,9 +27,9 @@ __all__ = [
     'Config',
     'DistanceStats',
     'GlobalStats',
+    'Message',
     'Packet',
     'RoRClientConfig',
-    'Sendable',
     'ServerInfo',
     'StreamRegister',
     'TruckFile',
