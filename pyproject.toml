@@ -48,13 +48,6 @@ warn_return_any = true
 warn_unused_configs = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-exclude = [
-    "ror_server_bot/cr_dict.py",
-    "ror_server_bot/RoR_client.py",
-    "ror_server_bot/RoRnet.py",
-    "ror_server_bot/services_start.py",
-    "ror_server_bot/TruckToName.py",
-]
 
 [tool.ruff]
 line-length = 79
@@ -97,13 +90,6 @@ ignore = [
     "SIM110",  # Use {repl} instead of for loop
     "SIM117",  # Use a single with statement with multiple contexts instead of nested with statements
     "UP015",   # Unnecessary open mode parameters
-]
-exclude = [
-    "ror_server_bot/cr_dict.py",
-    "ror_server_bot/RoR_client.py",
-    "ror_server_bot/RoRnet.py",
-    "ror_server_bot/services_start.py",
-    "ror_server_bot/TruckToName.py",
 ]
 
 [tool.ruff.pep8-naming]
