@@ -208,7 +208,7 @@ class CountdownCommand(BaseChatCommand):
         )
 
         # start at 1 to immediately send the first countdown message
-        time = 1
+        time: float = 1
 
         @client.server.on(RoRClientEvents.FRAME_STEP)
         async def on_frame_step(delta: float):
