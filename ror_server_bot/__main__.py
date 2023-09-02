@@ -33,7 +33,16 @@ if __name__ == '__main__':
             token=''
         ),
         discord_channel_id=-1,
-        announcements=RoRClientConfig.Announcements(),
+        announcements=RoRClientConfig.Announcements(
+            delay=10,
+            enabled=False,
+            messages=[
+                'Hello, World!',
+                'This is a test announcement!',
+                'This is another test announcement!',
+                'This is the last test announcement!'
+            ]
+        ),
         reconnection_interval=1,
         reconnection_tries=3,
     )
