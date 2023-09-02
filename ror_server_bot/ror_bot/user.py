@@ -38,6 +38,11 @@ class User(BaseModel):
     """Streams registered to the user."""
 
     @property
+    def unique_id(self) -> int:
+        """Get the unique id of the user."""
+        return self.info.unique_id
+
+    @property
     def auth_status(self) -> AuthLevels:
         """Get the authentication status of the user."""
         return self.info.auth_status
@@ -142,7 +147,7 @@ class User(BaseModel):
 
         if (
             stream_id != self.character_stream_id
-            or self.info.unique_id != actor_uid
+            or self.unique_id != actor_uid
         ):
             self.set_position(self.character_stream_id, Vector3())
 
