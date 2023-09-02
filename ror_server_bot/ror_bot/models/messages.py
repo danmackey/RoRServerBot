@@ -1,19 +1,18 @@
 import logging
 import struct
-from datetime import datetime
 from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator
 
 from ror_server_bot import pformat, RORNET_VERSION
 from ror_server_bot.ror_bot.enums import (
+    ActorStreamStatus,
     ActorType,
     AuthLevels,
     CharacterAnimation,
     CharacterCommand,
     Color,
     LightMask,
-    MessageType,
     NetMask,
     PlayerColor,
     StreamType,
@@ -36,8 +35,6 @@ def strip_nulls_after(*fields: str):
 
 
 class Message(BaseModel):
-    """A sendable object."""
-
     STRUCT_FORMAT: ClassVar[str]
     """The struct format of the object."""
 
@@ -78,53 +75,6 @@ class Message(BaseModel):
         return struct.pack(self.STRUCT_FORMAT, *values)
 
 
-class Packet(Message):
-    STRUCT_FORMAT: ClassVar[str] = 'IIII'
-    """The struct format of the packet header.
-    ```
-    I: command
-    I: source
-    I: stream_id
-    I: size
-    ```
-    """
-
-    command: MessageType
-    """The command of this packet."""
-    source: int = 0
-    """The source of this packet (0 = server)."""
-    stream_id: int = Field(default=0, ge=0)
-    """The stream id of this packet."""
-    size: int = Field(default=0, ge=0)
-    """The size of the data in this packet."""
-    data: bytes = b''
-
-    time: datetime = Field(default_factory=datetime.now)
-
-    @classmethod
-    def from_bytes(cls, header: bytes) -> 'Packet':
-        """Creates a packet from the header data.
-
-        :param header: The bytes of the header.
-        :return: The packet created from the header data.
-        """
-        return super().from_bytes(header)
-
-    def pack(self) -> bytes:
-        """Packs the packet into bytes.
-
-        :return: The packet packed into bytes.
-        """
-        return struct.pack(
-            f'{self.STRUCT_FORMAT}{self.size}s',
-            self.command,
-            self.source,
-            self.stream_id,
-            self.size,
-            self.data
-        )
-
-
 class ServerInfo(Message):
     STRUCT_FORMAT: ClassVar[str] = '20s128s128s?4096s'
     """The struct format of the server info data.
@@ -145,8 +95,8 @@ class ServerInfo(Message):
     """The name of the server."""
     has_password: bool = False
     """Whether the server has a password."""
-    info: str = Field(default='', max_length=4096)
-    """Info text (MOTD file contents)."""
+    motd: str = Field(default='', max_length=4096)
+    """Message of the Day (.motd file contents)."""
 
     # validators
     _strip_null_character = strip_nulls_after(
@@ -361,6 +311,7 @@ class ActorStreamRegister(Message, BaseStreamRegister):
     """
 
     type: Literal[StreamType.ACTOR]
+    status: ActorStreamStatus
     buffer_size: int
     timestamp: int
     skin: str = Field(max_length=60)
@@ -569,6 +520,7 @@ of each node in the vehicle. The data is sent as 3h (short) values and
 are compressed by a factor that is unique to each vehicle,
 m_net_node_compression. The node_data includes camera nodes.
 """
+
 
 class VehicleStreamData(Message):
     STRUCT_FORMAT: ClassVar[str] = 'ifffifffII3f'
