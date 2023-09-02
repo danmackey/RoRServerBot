@@ -1,8 +1,20 @@
-from typing import Self
+from typing import Any, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic_extra_types.color import Color
 
 from ror_server_bot import RORNET_VERSION
+
+
+def color_to_hex(color: str | Color) -> str:
+    """Convert a color name to a hex string.
+
+    :param color: The color to convert.
+    :return: The hex string.
+    """
+    return '#' + ''.join([
+        format(v, '02x').upper() for v in Color(color).as_rgb_tuple()
+    ])
 
 
 class RoRClientConfig(BaseModel):
@@ -21,10 +33,23 @@ class RoRClientConfig(BaseModel):
         """Delay between announcements in seconds."""
         enabled: bool = False
         messages: list[str] = Field(default_factory=list)
+        color: str = Field(default='yellow', validate_default=True)
+        """The color to use for the announcements. Can be a hex string
+        or a color name. If a color name is used, it will be converted
+        to a hex string."""
+
+        @field_validator('color', mode='before')
+        def __check_color(cls, v: Any) -> str:
+            # we do this because Color does not
+            # always output 6 digit hex strings
+            if isinstance(v, (str, Color)):
+                return color_to_hex(v)
+            return v
 
         @model_validator(mode='after')
-        def set_enabled(self) -> Self:
-            self.enabled = bool(self.messages)
+        def __set_disabled(self) -> Self:
+            if not self.messages:
+                self.enabled = False
             return self
 
         def get_next_announcement(self, time_sec: float) -> str:
@@ -36,7 +61,7 @@ class RoRClientConfig(BaseModel):
     server: ServerConfig
     user: UserConfig
     discord_channel_id: int
-    announcements: Announcements | None
+    announcements: Announcements = Announcements()
     reconnection_interval: int = 5
     """Interval between reconnection attempts in seconds."""
     reconnection_tries: int = 3
