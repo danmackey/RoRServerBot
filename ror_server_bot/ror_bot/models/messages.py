@@ -8,7 +8,7 @@ from ror_server_bot import pformat, RORNET_VERSION
 from ror_server_bot.ror_bot.enums import (
     ActorStreamStatus,
     ActorType,
-    AuthLevels,
+    AuthStatus,
     CharacterAnimation,
     CharacterCommand,
     Color,
@@ -145,7 +145,7 @@ class UserInfo(Message):
 
     unique_id: int = Field(default=0, ge=0)
     """The unique id of the user (set by the server)."""
-    auth_status: AuthLevels
+    auth_status: AuthStatus
     """The authentication status of the user (set by the server)."""
     slot_num: int = -1
     """The slot number the user occupies in the server (set by the
