@@ -62,6 +62,13 @@ class RoRClient:
     def on(self, event: RoRClientEvents, listener: Callable | None = None):
         """Decorator to register an event handler on the event emitter.
 
+        Example:
+        ```
+        @client.on(RoRClientEvents.USER_JOIN)
+        def on_user_join(unique_id: int, user_info: UserInfo):
+            print(f'User {user_info.name} joined the server')
+        ```
+
         :param event: The event to register the handler on.
         :param listener: The listener to register.
         """
@@ -70,6 +77,13 @@ class RoRClient:
     def once(self, event: RoRClientEvents, listener: Callable | None = None):
         """Decorator to register a one-time event handler on the event
         emitter.
+
+        Example:
+        ```
+        @client.once(RoRClientEvents.CHAT)
+        def once_chat(unique_id: int, message: str):
+            print(f'User {unique_id} sent a message: {message}')
+        ```
 
         :param event: The event to register the handler on.
         :param listener: The listener to register.
