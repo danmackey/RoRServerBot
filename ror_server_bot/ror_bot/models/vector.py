@@ -1,4 +1,5 @@
 import math
+from typing import Any, Callable, Generator
 
 from pydantic import BaseModel
 
@@ -105,6 +106,20 @@ class Vector3(BaseModel):
             f'{self.y:{format_spec}}, '
             f'{self.z:{format_spec}})'
         )
+
+    def __pretty__(  # type: ignore[override]
+        self,
+        fmt: Callable[[Any], Any],
+        **kwargs: Any
+    ) -> Generator[Any, None, None]:
+        yield self.__repr_name__() + '('  # type: ignore[misc]
+        for i, (name, value) in enumerate(self.model_dump().items()):
+            if name is not None:
+                yield name + '='
+            yield fmt(value)
+            if i < len(self) - 1:
+                yield ', '
+        yield ')'
 
     def distance(self, other: 'Vector3') -> float:
         """Calculates the distance to another Vector3
@@ -231,6 +246,20 @@ class Vector4(BaseModel):
             f'{self.z:{format_spec}}, '
             f'{self.w:{format_spec}})'
         )
+
+    def __pretty__(  # type: ignore[override]
+        self,
+        fmt: Callable[[Any], Any],
+        **kwargs: Any
+    ) -> Generator[Any, None, None]:
+        yield self.__repr_name__() + '('  # type: ignore[misc]
+        for i, (name, value) in enumerate(self.model_dump().items()):
+            if name is not None:
+                yield name + '='
+            yield fmt(value)
+            if i < len(self) - 1:
+                yield ', '
+        yield ')'
 
     def distance(self, other: 'Vector4') -> float:
         """Calculates the distance to another Vector4
