@@ -14,7 +14,6 @@ PROJECT_DIRECTORY = Path(__file__).parent
 
 TRUCK_TO_NAME_FILE = Path('truck_to_name.json')
 
-
 pformat = PrettyFormat(indent_step=2)
 
 stream_handler = logging.StreamHandler(sys.stdout)
@@ -30,12 +29,16 @@ rich_handler = RichHandler(
     keywords=[
         '[CHAT]',
         '[EMIT]'
-        '[GAME_CMD]',
+        '[EVENT]'
+        '[GCMD]',
         '[HEAD]',
+        '[NETQ]',
         '[PCKT]',
         '[PRIV]',
         '[RECV]',
+        '[STREAM]',
         '[SEND]',
+        '[USER]',
     ]
 )
 
@@ -58,7 +61,7 @@ stream_handler.setLevel(logging.INFO)
 file_handler.setFormatter(file_fmt)
 file_handler.setLevel(logging.DEBUG)
 rich_handler.setFormatter(rich_fmt)
-rich_handler.setLevel(logging.DEBUG)
+rich_handler.setLevel(logging.INFO)
 
 
 logging.basicConfig(
