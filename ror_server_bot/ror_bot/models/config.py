@@ -1,3 +1,5 @@
+from typing import Self
+
 from pydantic import BaseModel, Field, model_validator
 
 from ror_server_bot import RORNET_VERSION
@@ -21,7 +23,7 @@ class RoRClientConfig(BaseModel):
         messages: list[str] = Field(default_factory=list)
 
         @model_validator(mode='after')
-        def set_enabled(self) -> 'RoRClientConfig.Announcements':  # noqa: N804
+        def set_enabled(self) -> Self:
             self.enabled = bool(self.messages)
             return self
 
