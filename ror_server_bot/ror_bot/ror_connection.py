@@ -32,10 +32,10 @@ from .models import (
     ChatStreamRegister,
     GameCmdPacket,
     GlobalStats,
-    Packet,
-    packet_factory,
     HelloPacket,
     NetQualityPacket,
+    Packet,
+    packet_factory,
     PrivateChatPacket,
     ServerFullPacket,
     ServerInfo,
@@ -470,7 +470,7 @@ class RoRConnection:
         async with self._writer_lock:
             if packet.size != len(packet.payload):
                 raise ValueError(
-                    f'Packet size mismatch: data={packet.payload} '
+                    f'Packet size mismatch: data={packet.payload!r} '
                     f'packet={packet}'
                 )
 
@@ -928,16 +928,15 @@ class RoRConnection:
         :param command: The command to send.
         """
         logger.debug('[GCMD] [SEND] game_cmd=%r', command)
-        message = command.encode()
-        await self._send(
-            GameCmdPacket(
-                type=MessageType.GAME_CMD,
-                source=self.unique_id,
-                stream_id=0,
-                size=len(message),
-            ),
-            message
-        )
+
+        payload = command.encode()
+        await self._send(GameCmdPacket(
+            type=MessageType.GAME_CMD,
+            source=self.unique_id,
+            stream_id=0,
+            size=len(payload),
+            payload=payload
+        ))
 
     def get_uid_by_username(self, username: str) -> int | None:
         """Gets the uid of the user by their username.
