@@ -1,4 +1,4 @@
-from enum import StrEnum, auto, Enum, IntEnum, IntFlag
+from enum import auto, Enum, IntEnum, IntFlag, StrEnum
 from typing import Self
 
 
