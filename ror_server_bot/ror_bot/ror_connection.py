@@ -2,11 +2,9 @@ import asyncio
 import contextlib
 import hashlib
 import logging
-import math
 import struct
 import time
 from datetime import datetime
-from enum import Enum
 from functools import singledispatchmethod
 from itertools import chain
 from typing import Callable
@@ -17,10 +15,11 @@ from ror_server_bot import pformat, RORNET_VERSION
 
 from .enums import (
     ActorStreamStatus,
-    AuthLevels,
+    AuthStatus,
     CharacterAnimation,
     CharacterCommand,
     MessageType,
+    RoRClientEvents,
     StreamType,
 )
 from .models import (
@@ -84,21 +83,6 @@ class UserAlreadyExistsError(Exception):
         super().__init__(*args)
 
 
-class RoRClientEvents(Enum):
-    FRAME_STEP = 'frame_step'
-    NET_QUALITY = 'net_quality'
-    CHAT = 'chat'
-    PRIVATE_CHAT = 'private_chat'
-    USER_JOIN = 'user_join'
-    USER_INFO = 'user_info'
-    USER_LEAVE = 'user_leave'
-    GAME_CMD = 'game_cmd'
-    STREAM_REGISTER = 'stream_register'
-    STREAM_REGISTER_RESULT = 'stream_register_result'
-    STREAM_DATA = 'stream_data'
-    STREAM_UNREGISTER = 'stream_unregister'
-
-
 class RoRConnection:
     STABLE_FPS = 20
 
@@ -157,7 +141,7 @@ class RoRConnection:
 
         self._server_info: ServerInfo
         self._user_info = UserInfo(
-            auth_status=AuthLevels.BOT,
+            auth_status=AuthStatus.BOT,
             slot_num=-2,
             username=username,
             user_token=user_token,
@@ -169,6 +153,10 @@ class RoRConnection:
             session_type='bot',
             session_options='',
         )
+
+    @property
+    def auth_status(self) -> AuthStatus:
+        return self._user_info.auth_status
 
     @property
     def is_connected(self) -> bool:
@@ -474,6 +462,8 @@ class RoRConnection:
                     f'packet={packet}'
                 )
 
+            logger.debug('[SEND] %s', packet)
+
             data = packet.pack()
 
             logger.debug('[SEND] %s', data)
@@ -738,7 +728,7 @@ class RoRConnection:
         """
         logger.debug(
             '[EVENT] event=%r new_listener=%r',
-            event,
+            event.value,
             listener.__name__
         )
 
@@ -781,6 +771,19 @@ class RoRConnection:
         :param listener: The listener to register.
         """
         return self._event_emitter.once(event.value, listener)
+
+    def remove_listener(self, event: RoRClientEvents, listener: Callable):
+        """Removes an event handler from the event emitter.
+
+        :param event: The event to remove the handler from.
+        :param listener: The listener to remove.
+        """
+        logger.debug(
+            '[EVENT] event=%r remove_listener=%r',
+            event.value,
+            listener.__name__
+        )
+        self._event_emitter.remove_listener(event.value, listener)
 
     async def register_stream(self, stream: StreamRegister) -> int:
         """Registers a stream with the server as the client.
@@ -876,51 +879,6 @@ class RoRConnection:
             size=len(payload),
             payload=payload
         ))
-
-    async def send_multiline_chat(self, message: str):
-        """Sends a multiline message to the game chat.
-
-        :param message: The message to send.
-        """
-        max_line_len = 100
-        if len(message) > max_line_len:
-            logger.debug('[CHAT] multiline_message=%r', message)
-
-            total_lines = math.ceil(len(message) / max_line_len)
-            for i in range(total_lines):
-                line = message[max_line_len*i:max_line_len*(i+1)]
-                if i > 0:
-                    line = f'| {line}'
-                await self.send_chat(line)
-        else:
-            await self.send_chat(message)
-
-    async def kick(self, uid: int, reason: str = 'No reason given'):
-        """Kicks a user from the server.
-
-        :param uid: The uid of the user to kick.
-        :param reason: The reason for kicking the user, defaults to
-        'No reason given'
-        """
-        await self.send_chat(f'!kick {uid} {reason}')
-
-    async def ban(self, uid: int, reason: str = 'No reason given'):
-        """Bans a user from the server.
-
-        :param uid: The uid of the user to ban.
-        :param reason: The reason for banning the user, defaults to
-        'No reason given'
-        """
-        await self.send_chat(f'!ban {uid} {reason}')
-
-    async def say(self, uid: int, message: str):
-        """Send a message as a user anonymously.
-
-        :param uid: The uid of the user to send the message to. If -1,
-        the message will be sent to everyone.
-        :param message: The message to send.
-        """
-        await self.send_chat(f'!say {uid} {message}')
 
     async def send_game_cmd(self, command: str):
         """Sends a game command (Angelscript) to the server.
@@ -1205,7 +1163,7 @@ class RoRConnection:
         """
         return self.get_user(uid).client_guid
 
-    def get_auth_status(self, uid: int) -> AuthLevels:
+    def get_auth_status(self, uid: int) -> AuthStatus:
         """Gets the authentication status of the user.
 
         :param uid: The uid of the user.
