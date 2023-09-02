@@ -1,4 +1,5 @@
-from enum import auto, Enum, IntEnum, IntFlag
+from enum import StrEnum, auto, Enum, IntEnum, IntFlag
+from typing import Self
 
 
 class MessageType(IntEnum):
@@ -58,7 +59,7 @@ class MessageType(IntEnum):
     """Wrong version."""
 
 
-class AuthLevels(IntFlag):
+class AuthStatus(IntFlag):
     NONE = 0
     """no authentication"""
     ADMIN = auto()
@@ -73,19 +74,19 @@ class AuthLevels(IntFlag):
     """banned"""
 
     @classmethod
-    def get_auth_str(cls, auth: 'AuthLevels') -> str:
+    def get_auth_str(cls, auth: Self) -> str:
         auth_str = ''
-        if auth is AuthLevels.NONE:
+        if auth is AuthStatus.NONE:
             auth_str = ''
-        if auth is AuthLevels.ADMIN:
+        if auth is AuthStatus.ADMIN:
             auth_str = 'A'
-        if auth is AuthLevels.MOD:
+        if auth is AuthStatus.MOD:
             auth_str = 'M'
-        if auth is AuthLevels.RANKED:
+        if auth is AuthStatus.RANKED:
             auth_str = 'R'
-        if auth is AuthLevels.BOT:
+        if auth is AuthStatus.BOT:
             auth_str = 'B'
-        if auth is AuthLevels.BANNED:
+        if auth is AuthStatus.BANNED:
             auth_str = 'X'
         return auth_str
 
@@ -220,7 +221,7 @@ class PlayerColor(Enum):
     DARK_YELLOW = "#999900"
 
 
-class Color(Enum):
+class Color(StrEnum):
     BLACK = "#000000"
     GREY = "#999999"
     RED = "#FF0000"
@@ -233,3 +234,18 @@ class Color(Enum):
     COMMAND = "#941E8D"
     WHISPER = "#967417"
     SCRIPT = "#32436F"
+
+
+class RoRClientEvents(StrEnum):
+    FRAME_STEP = 'frame_step'
+    NET_QUALITY = 'net_quality'
+    CHAT = 'chat'
+    PRIVATE_CHAT = 'private_chat'
+    USER_JOIN = 'user_join'
+    USER_INFO = 'user_info'
+    USER_LEAVE = 'user_leave'
+    GAME_CMD = 'game_cmd'
+    STREAM_REGISTER = 'stream_register'
+    STREAM_REGISTER_RESULT = 'stream_register_result'
+    STREAM_DATA = 'stream_data'
+    STREAM_UNREGISTER = 'stream_unregister'
