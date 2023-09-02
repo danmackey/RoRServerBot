@@ -1,64 +1,6 @@
 from enum import auto, Enum, IntEnum, IntFlag
 
 
-# names from https://www.color-name.com/
-class PlayerColor(Enum):
-    """The color assigned to each player."""
-
-    #! DO NOT REORDER
-    GREEN = "#00CC00"
-    BLUE = "#0066B3"
-    ORANGE = "#FF8000"
-    YELLOW = "#FFCC00"
-    LIME = "#CCFF00"
-    RED = "#FF0000"
-    GRAY = "#808080"
-    DARK_GREEN = "#008F00"
-    WINDSOR_TAN = "#B35A00"
-    LIGHT_GOLD = "#B38F00"
-    APPLE_GREEN = "#8FB300"
-    UE_RED = "#B30000"
-    DARK_GRAY = "#BEBEBE"
-    LIGHT_GREEN = "#80FF80"
-    LIGHT_SKY_BLUE = "#80C9FF"
-    MAC_AND_CHEESE = "#FFC080"
-    YELLOW_CRAYOLA = "#FFE680"
-    LAVENDER_FLORAL = "#AA80FF"
-    ELECTRIC_PINK = "#EE00CC"
-    CONGO_PINK = "#FF8080"
-    BRONZE_YELLOW = "#666600"
-    BRILLIANT_LAVENDER = "#FFBFFF"
-    SEA_GREEN = "#00FFCC"
-    WILD_ORCHID = "#CC6699"
-    DARK_YELLOW = "#999900"
-
-
-class Color(Enum):
-    BLACK = "#000000"
-    GREY = "#999999"
-    RED = "#FF0000"
-    YELLOW = "#FFFF00"
-    WHITE = "#FFFFFF"
-    CYAN = "#00FFFF"
-    BLUE = "#0000FF"
-    GREEN = "#00FF00"
-    MAGENTA = "#FF00FF"
-    COMMAND = "#941E8D"
-    WHISPER = "#967417"
-    SCRIPT = "#32436F"
-
-
-class ActorType(Enum):
-    TRUCK = 'truck'
-    CAR = 'car'
-    LOAD = 'load'
-    AIRPLANE = 'airplane'
-    BOAT = 'boat'
-    TRAILER = 'trailer'
-    TRAIN = 'train'
-    FIXED = 'fixed'
-
-
 class MessageType(IntEnum):
     HELLO = 1025
     """Client sends its version as the first message."""
@@ -116,13 +58,6 @@ class MessageType(IntEnum):
     """Wrong version."""
 
 
-class StreamType(IntEnum):
-    ACTOR = 0
-    CHARACTER = 1
-    AI = 2
-    CHAT = 3
-
-
 class AuthLevels(IntFlag):
     NONE = 0
     """no authentication"""
@@ -157,6 +92,31 @@ class AuthLevels(IntFlag):
     @property
     def auth_str(self) -> str:
         return self.get_auth_str(self)
+
+
+class StreamType(IntEnum):
+    ACTOR = 0
+    CHARACTER = 1
+    AI = 2
+    CHAT = 3
+
+
+class ActorStreamStatus(IntEnum):
+    MISMATCH = -2
+    INVALID = -1
+    UNKNOWN = 0
+    SUCCESS = 1
+
+
+class ActorType(Enum):
+    TRUCK = 'truck'
+    CAR = 'car'
+    LOAD = 'load'
+    AIRPLANE = 'airplane'
+    BOAT = 'boat'
+    TRAILER = 'trailer'
+    TRAIN = 'train'
+    FIXED = 'fixed'
 
 
 class NetMask(IntFlag):
@@ -226,3 +186,50 @@ class CharacterAnimation(Enum):
     SWIM_LOOP = "Swim_loop"
     TURN = "Turn"
     DRIVING = "Driving"
+
+
+class PlayerColor(Enum):
+    """The color assigned to each player."""
+
+    # names from https://www.color-name.com/
+    #! DO NOT REORDER
+    GREEN = "#00CC00"
+    BLUE = "#0066B3"
+    ORANGE = "#FF8000"
+    YELLOW = "#FFCC00"
+    LIME = "#CCFF00"
+    RED = "#FF0000"
+    GRAY = "#808080"
+    DARK_GREEN = "#008F00"
+    WINDSOR_TAN = "#B35A00"
+    LIGHT_GOLD = "#B38F00"
+    APPLE_GREEN = "#8FB300"
+    UE_RED = "#B30000"
+    DARK_GRAY = "#BEBEBE"
+    LIGHT_GREEN = "#80FF80"
+    LIGHT_SKY_BLUE = "#80C9FF"
+    MAC_AND_CHEESE = "#FFC080"
+    YELLOW_CRAYOLA = "#FFE680"
+    LAVENDER_FLORAL = "#AA80FF"
+    ELECTRIC_PINK = "#EE00CC"
+    CONGO_PINK = "#FF8080"
+    BRONZE_YELLOW = "#666600"
+    BRILLIANT_LAVENDER = "#FFBFFF"
+    SEA_GREEN = "#00FFCC"
+    WILD_ORCHID = "#CC6699"
+    DARK_YELLOW = "#999900"
+
+
+class Color(Enum):
+    BLACK = "#000000"
+    GREY = "#999999"
+    RED = "#FF0000"
+    YELLOW = "#FFFF00"
+    WHITE = "#FFFFFF"
+    CYAN = "#00FFFF"
+    BLUE = "#0000FF"
+    GREEN = "#00FF00"
+    MAGENTA = "#FF00FF"
+    COMMAND = "#941E8D"
+    WHISPER = "#967417"
+    SCRIPT = "#32436F"
