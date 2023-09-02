@@ -728,7 +728,7 @@ class RoRConnection:
         """
         logger.debug(
             '[EVENT] event=%r new_listener=%r',
-            event.value,
+            event,
             listener.__name__
         )
 
