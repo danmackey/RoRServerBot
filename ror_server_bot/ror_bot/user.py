@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from ror_server_bot import TRUCK_TO_NAME_FILE
 
-from .enums import ActorType, AuthLevels, Color, StreamType
+from .enums import ActorType, AuthStatus, Color, StreamType
 from .models import (
     StreamRegister,
     TruckFile,
@@ -43,7 +43,7 @@ class User(BaseModel):
         return self.info.unique_id
 
     @property
-    def auth_status(self) -> AuthLevels:
+    def auth_status(self) -> AuthStatus:
         """Get the authentication status of the user."""
         return self.info.auth_status
 
