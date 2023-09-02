@@ -39,7 +39,7 @@ class RoRClientConfig(BaseModel):
         to a hex string."""
 
         @field_validator('color', mode='before')
-        def __check_color(cls, v: Any) -> str:
+        def __check_color(cls, v: Any) -> Any:
             # we do this because Color does not
             # always output 6 digit hex strings
             if isinstance(v, (str, Color)):
