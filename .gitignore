@@ -193,3 +193,4 @@ poetry.toml
 RoRservices.log
 recordings/*
 configuration.xml
+*.rec
