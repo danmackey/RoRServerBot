@@ -180,13 +180,14 @@ class CharacterCommand(IntEnum):
 
 
 class CharacterAnimation(Enum):
-    IDLE_SWAY = "Idle_sway"
-    SPOT_SWIM = "Spot_swim"
-    WALK = "Walk"
-    RUN = "Run"
-    SWIM_LOOP = "Swim_loop"
-    TURN = "Turn"
-    DRIVING = "Driving"
+    IDLE_SWAY = 'Idle_sway'
+    SPOT_SWIM = 'Spot_swim'
+    WALK = 'Walk'
+    RUN = 'Run'
+    SWIM_LOOP = 'Swim_loop'
+    TURN = 'Turn'
+    DRIVING = 'Driving'
+    SIDE_STEP = 'Side_step'
 
 
 class PlayerColor(Enum):
