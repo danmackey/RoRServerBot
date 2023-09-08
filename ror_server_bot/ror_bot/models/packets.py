@@ -15,7 +15,7 @@ class BasePacket(Message):
     type: MessageType
     source: int
     stream_id: int
-    size: int
+    size: int = 0
     payload: bytes = Field(default=b'')
 
     time: datetime = Field(default_factory=datetime.now)
