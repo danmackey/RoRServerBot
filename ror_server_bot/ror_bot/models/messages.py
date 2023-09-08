@@ -18,7 +18,7 @@ from ror_server_bot.ror_bot.enums import (
     StreamType,
 )
 
-from .vector import Vector3, Vector4
+from .vector import Vector3
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class ServerInfo(Message):
     )
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'ServerInfo':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a server info from the bytes.
 
         :param data: The bytes to create the server info from.
@@ -189,7 +189,7 @@ class UserInfo(Message):
     )
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'UserInfo':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a user info from the bytes.
 
         :param data: The bytes to create the user info from.
@@ -248,11 +248,6 @@ class GenericStreamRegister(Message, BaseStreamRegister):
     name: Literal['chat', 'default']
     reg_data: str = Field(max_length=128)
 
-    position: Vector3 = Vector3()
-    """The position of the actor."""
-    rotation: Vector4 = Vector4()
-    """The rotation of the actor."""
-
     _strip_nulls = strip_nulls_after('reg_data')
 
     @classmethod
@@ -291,6 +286,11 @@ class CharacterStreamRegister(GenericStreamRegister):
     name: Literal['default']
     reg_data: str = Field(max_length=128)
 
+    position: Vector3 = Vector3()
+    """The position of the character in meters."""
+    rotation: float = 0.0
+    """The rotation of the character in radians."""
+
 
 class ActorStreamRegister(Message, BaseStreamRegister):
     STRUCT_FORMAT: ClassVar[str] = (
@@ -321,14 +321,14 @@ class ActorStreamRegister(Message, BaseStreamRegister):
     """The type of the actor (parsed from the actor filename)."""
 
     position: Vector3 = Vector3()
-    """The position of the actor."""
-    rotation: Vector4 = Vector4()
-    """The rotation of the actor."""
+    """The position of the actor in meters."""
+    rotation: float = 0.0
+    """The rotation of the actor in radians."""
 
     _strip_nulls = strip_nulls_after('skin', 'section_config')
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'ActorStreamRegister':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a stream register from the bytes.
 
         :param data: The bytes to create the stream register from.
@@ -411,7 +411,7 @@ class CharacterPositionStreamData(Message):
         return v
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'CharacterPositionStreamData':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a character position from the bytes.
 
         :param data: The bytes to create the character position from.
@@ -460,7 +460,7 @@ class CharacterAttachStreamData(Message):
     position: int
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'CharacterAttachStreamData':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a character attach from the bytes.
 
         :param data: The bytes to create the character attach from.
@@ -497,7 +497,7 @@ class CharacterDetachStreamData(Message):
     command: Literal[CharacterCommand.DETACH]
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'CharacterDetachStreamData':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a character detach from the bytes.
 
         :param data: The bytes to create the character detach from.
@@ -522,7 +522,7 @@ m_net_node_compression. The node_data includes camera nodes.
 """
 
 
-class VehicleStreamData(Message):
+class ActorStreamData(Message):
     STRUCT_FORMAT: ClassVar[str] = 'ifffifffII3f'
     """The struct format of the vehicle state data.
     ```
@@ -542,6 +542,7 @@ class VehicleStreamData(Message):
     """
 
     time: int
+    """Time in milliseconds."""
     engine_rpm: float
     engine_accerlation: float
     engine_clutch: float
@@ -555,7 +556,7 @@ class VehicleStreamData(Message):
     node_data: bytes
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'VehicleStreamData':
+    def from_bytes(cls, data: bytes) -> Self:
         """Creates a vehicle state from the bytes.
 
         :param data: The bytes to create the vehicle state from.
@@ -594,6 +595,7 @@ class VehicleStreamData(Message):
             self.brake,
             self.wheel_speed,
             self.flag_mask,
+            self.light_mask,
             *self.position,
             self.node_data,
         )
@@ -603,7 +605,7 @@ StreamData = (
     CharacterAttachStreamData
     | CharacterPositionStreamData
     | CharacterDetachStreamData
-    | VehicleStreamData
+    | ActorStreamData
 )
 
 
@@ -626,7 +628,7 @@ def stream_data_factory(type: StreamType, data: bytes) -> StreamData:
         else:
             raise ValueError(f'Invalid character command: {command!r}')
     elif type is StreamType.ACTOR:
-        stream_data = VehicleStreamData.from_bytes(data)
+        stream_data = ActorStreamData.from_bytes(data)
     else:
         raise ValueError(f'Invalid stream type: {type!r}')
     return stream_data

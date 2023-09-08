@@ -1,5 +1,6 @@
 from .config import Config, RoRClientConfig
 from .messages import (
+    ActorStreamData,
     ActorStreamRegister,
     CharacterAttachStreamData,
     CharacterPositionStreamData,
@@ -12,7 +13,6 @@ from .messages import (
     StreamData,
     StreamRegister,
     UserInfo,
-    VehicleStreamData,
 )
 from .packets import (
     BannedPacket,
@@ -84,7 +84,7 @@ __all__ = [
     'UserStats',
     'Vector3',
     'Vector4',
-    'VehicleStreamData',
+    'ActorStreamData',
     'WelcomePacket',
     'WrongPasswordPacket',
     'WrongVersionPacket',
