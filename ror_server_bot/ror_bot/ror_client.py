@@ -1,11 +1,11 @@
 import asyncio
 import logging
-import math
 
 from .commands import chat_command_factory, COMMAND_PREFIX
 from .enums import AuthStatus, RoRClientEvents
-from .models import RoRClientConfig
+from .models import RoRClientConfig, Vector3
 from .ror_connection import RoRConnection
+from .stream_recorder import StreamRecorder
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +43,14 @@ class AnnouncementsHandler:
         if self._time >= self._delay:
             self._time = 0
 
-            idx = self._idx
+            message = self._messages[self._idx]
 
-            if idx == len(self._messages) - 1:
+            is_last_idx = self._idx == len(self._messages) - 1
+
+            if is_last_idx:
                 self._idx = 0
             else:
                 self._idx += 1
-
-            message = self._messages[idx]
 
             return f'{self._color}ANNOUNCEMENT: {message}'
         else:
@@ -73,6 +73,8 @@ class RoRClient:
             host=client_config.server.host,
             port=client_config.server.port,
         )
+
+        self.stream_recorder = StreamRecorder(self.server)
 
         self._announcements_enabled = client_config.announcements.enabled
         self._announcements_handler = AnnouncementsHandler(
@@ -133,19 +135,30 @@ class RoRClient:
 
     async def _on_chat(self, uid: int, msg: str):
         if msg.startswith(COMMAND_PREFIX):
-            logger.info('User %d sent command: %r', uid, msg)
-            try:
-                command = chat_command_factory(
-                    msg[len(COMMAND_PREFIX):]
-                )
-            except ValueError as e:
-                logger.warning(e)
-                await self.send_private_chat(uid, f'Invalid command: {msg}')
-            else:
-                # Wait a bit before executing the command to give the
-                # impression that the bot is typing the response.
-                await asyncio.sleep(0.2)
-                await command.execute(self, uid)
+            await self._perform_command(uid, msg)
+
+    async def _perform_command(self, uid: int, msg: str):
+        logger.info('User %d sent command: %r', uid, msg)
+        try:
+            command = chat_command_factory(msg[len(COMMAND_PREFIX):])
+        except ValueError as exc:
+            logger.warning(exc)
+            await self.send_chat(f'Invalid command: {msg}')
+            return
+
+        # Wait a bit before executing the command to give the
+        # impression that the bot is typing the response.
+        await asyncio.sleep(0.2)
+
+        try:
+            await command.execute(self, uid)
+        except Exception as exc:
+            logger.error(
+                'Error executing command: %r',
+                exc,
+                exc_info=True,
+                stacklevel=2
+            )
 
     async def send_chat(self, message: str):
         """Send a chat message to the server.
@@ -161,24 +174,6 @@ class RoRClient:
         :param message: The message to send.
         """
         await self.server.send_private_chat(uid, message)
-
-    async def send_multiline_chat(self, message: str):
-        """Sends a multiline message to the game chat.
-
-        :param message: The message to send.
-        """
-        max_line_len = 100
-        if len(message) > max_line_len:
-            logger.debug('[CHAT] multiline_message=%r', message)
-
-            total_lines = math.ceil(len(message) / max_line_len)
-            for i in range(total_lines):
-                line = message[max_line_len*i:max_line_len*(i+1)]
-                if i > 0:
-                    line = f'| {line}'
-                await self.send_chat(line)
-        else:
-            await self.send_chat(message)
 
     async def kick(self, uid: int, reason: str = 'No reason given'):
         """Kicks a user from the server.
@@ -213,3 +208,17 @@ class RoRClient:
         :param cmd: The command to send.
         """
         await self.server.send_game_cmd(cmd)
+
+    async def move_bot(self, position: Vector3):
+        """Move the bot to a position.
+
+        :param position: The position to move the bot to, in meters.
+        """
+        await self.server.move_bot(position)
+
+    async def rotate_bot(self, rotation: float):
+        """Rotate the bot to a rotation.
+
+        :param rotation: The new rotation of the bot, in radians.
+        """
+        await self.server.rotate_bot(rotation)
