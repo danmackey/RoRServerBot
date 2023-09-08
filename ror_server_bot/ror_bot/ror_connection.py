@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import hashlib
 import logging
+import math
 import struct
 import time
 from datetime import datetime
@@ -23,8 +24,10 @@ from .enums import (
     StreamType,
 )
 from .models import (
+    ActorStreamData,
     ActorStreamRegister,
     BannedPacket,
+    CharacterAttachStreamData,
     CharacterPositionStreamData,
     CharacterStreamRegister,
     ChatPacket,
@@ -51,7 +54,6 @@ from .models import (
     UserJoinPacket,
     UserLeavePacket,
     Vector3,
-    Vector4,
     WelcomePacket,
     WrongPasswordPacket,
     WrongVersionPacket,
@@ -179,6 +181,34 @@ class RoRConnection:
         return self._user_info.unique_id
 
     @property
+    def character_sid(self) -> int:
+        """Gets the stream id of the character stream."""
+        return self.get_character_sid(self.unique_id)
+
+    @property
+    def chat_sid(self) -> int:
+        """Gets the stream id of the chat stream."""
+        return self.get_chat_sid(self.unique_id)
+
+    @property
+    def character_stream_register(self) -> CharacterStreamRegister:
+        """Gets the character stream."""
+        stream = self.get_stream(self.unique_id, self.character_sid)
+        if not isinstance(stream, CharacterStreamRegister):
+            raise TypeError(
+                f'Expected CharacterStreamRegister, got {type(stream)}'
+            )
+        return stream
+
+    @property
+    def chat_stream_register(self) -> ChatStreamRegister:
+        """Gets the chat stream."""
+        stream = self.get_stream(self.unique_id, self.chat_sid)
+        if not isinstance(stream, ChatStreamRegister):
+            raise TypeError(f'Expected ChatStreamRegister, got {type(stream)}')
+        return stream
+
+    @property
     def user_count(self) -> int:
         """Gets the number of users."""
         return len(self._users) - 1  # subtract 1 for the server client
@@ -194,6 +224,32 @@ class RoRConnection:
         return list(chain.from_iterable(
             user.stream_ids for user in self._users.values()
         ))
+
+    @property
+    def position(self) -> Vector3:
+        """Gets and sets the position of the client. This does not
+        update the position of the client on the server."""
+        position = self.get_position(self.unique_id, self.character_sid)
+        if position is None:
+            raise ValueError('Position is None')
+        return position
+
+    @position.setter
+    def position(self, value: Vector3):
+        self.set_position(self.unique_id, self.character_sid, value)
+
+    @property
+    def rotation(self) -> float:
+        """Gets and sets the rotation of the client. This does not
+        update the rotation of the client on the server."""
+        rotation = self.get_rotation(self.unique_id, self.character_sid)
+        if rotation is None:
+            raise ValueError('Rotation is None')
+        return rotation
+
+    @rotation.setter
+    def rotation(self, value: float):
+        self.set_rotation(self.unique_id, self.character_sid, value)
 
     async def __aenter__(self) -> 'RoRConnection':
         """Connects to the server.
@@ -389,10 +445,13 @@ class RoRConnection:
                 'Cannot start heartbeat loop when not connected'
             )
 
+        self.position = Vector3()
+        self.rotation = 0.0
+
         stream = CharacterPositionStreamData(
             command=CharacterCommand.POSITION,
-            position=Vector3(),
-            rotation=0,
+            position=self.position,
+            rotation=self.rotation,
             animation_time=self._heartbeat_interval,
             animation_mode=CharacterAnimation.IDLE_SWAY,
         )
@@ -400,33 +459,31 @@ class RoRConnection:
         header = StreamDataPacket(
             type=MessageType.STREAM_DATA,
             source=self.unique_id,
-            stream_id=self.get_character_sid(self.unique_id),
-            size=0
+            stream_id=self.character_sid,
         )
 
         logger.info(
-            'Sending character stream data every %f seconds. %s',
-            self._heartbeat_interval,
-            stream
+            'Sending character stream data every %f seconds.',
+            self._heartbeat_interval
         )
 
         start_time = time.time()
-        current_time = start_time
+        curr_time = start_time
         delta = 0
         while self._is_connected:
-            prev_time = current_time
-            current_time = time.time()
-            delta += current_time - prev_time
+            prev_time = curr_time
+            curr_time = time.time()
+            delta += curr_time - prev_time
 
             if delta >= self._heartbeat_interval:
-                stream.animation_time = delta
                 delta = 0
 
-                # avoid spamming logs
-                if self._heartbeat_interval >= 1:
-                    logger.info('Sending heartbeat')
+                stream.position = self.position
+                stream.rotation = self.rotation
+                stream.animation_time = delta
 
                 payload = stream.pack()
+
                 header.size = len(payload)
                 header.payload = payload
 
@@ -444,7 +501,7 @@ class RoRConnection:
             curr_time = time.time()
             delta += curr_time - prev_time
 
-            if delta >= (self.STABLE_FPS / 60):
+            if delta >= (1 / self.STABLE_FPS):
                 self._emit(RoRClientEvents.FRAME_STEP, delta)
                 delta = 0
 
@@ -577,7 +634,7 @@ class RoRConnection:
 
         logger.info(
             'User %r with uid %d left with reason: %r',
-            user.client_name,
+            user.username,
             packet.source,
             packet.payload.decode()
         )
@@ -669,10 +726,13 @@ class RoRConnection:
         if packet.source == self.unique_id:
             return
 
+        # if we are getting stream data from a user or stream we cannot
+        # find, we likely just joined the server and are waiting for the
+        # server to send us the user info and stream register packets
         with contextlib.suppress(UserNotFoundError, StreamNotFoundError):
             stream = self.get_stream(packet.source, packet.stream_id)
 
-            logger.info(
+            logger.debug(
                 'User %r with uid=%d sent data for %s stream with sid=%d',
                 self.get_username(packet.source),
                 packet.source,
@@ -680,18 +740,41 @@ class RoRConnection:
                 stream.origin_stream_id
             )
 
-            stream_data: StreamData | None
-            match stream.type:
-                case StreamType.CHARACTER | StreamType.ACTOR:
-                    stream_data = stream_data_factory(
-                        stream.type,
-                        packet.payload
+            stream_data: StreamData | None = None
+            if stream.type in (StreamType.CHARACTER, StreamType.ACTOR):
+                stream_data = stream_data_factory(stream.type, packet.payload)
+                if isinstance(stream_data, CharacterPositionStreamData):
+                    self.set_rotation(
+                        packet.source,
+                        packet.stream_id,
+                        stream_data.rotation
                     )
-                    logger.debug('[STREAM] stream_data=%s', stream_data)
-                case StreamType.CHAT:
-                    stream_data = None
-                case _:
-                    raise ValueError(f'Unknown stream type: {stream.type!r}')
+
+                if isinstance(stream_data, (
+                    CharacterPositionStreamData,
+                    ActorStreamData
+                )):
+                    self.set_position(
+                        packet.source,
+                        packet.stream_id,
+                        stream_data.position
+                    )
+                    self.set_current_stream(
+                        packet.source,
+                        packet.source,
+                        packet.stream_id
+                    )
+                elif isinstance(stream_data, CharacterAttachStreamData):
+                    self.set_current_stream(
+                        packet.source,
+                        stream_data.source_id,
+                        stream_data.stream_id
+                    )
+                logger.debug('[STREAM] stream_data=%s', stream_data)
+            elif stream.type is StreamType.CHAT:
+                stream_data = None
+            else:
+                raise ValueError(f'Unknown stream type: {stream.type!r}')
 
             self._emit(
                 RoRClientEvents.STREAM_DATA,
@@ -726,11 +809,8 @@ class RoRConnection:
         :param event: The event that was added.
         :param listener: The listener that was added.
         """
-        logger.debug(
-            '[EVENT] event=%r new_listener=%r',
-            event,
-            listener.__name__
-        )
+        name = listener.__name__
+        logger.debug('[EVENT] event=%r new_listener=%r', event, name)
 
     def _error(self, error: Exception):
         """Handles error events.
@@ -824,7 +904,6 @@ class RoRConnection:
             stream_id=stream_id,
             size=0,
         ))
-        self.delete_stream(self.unique_id, stream_id)
 
     async def reply_to_actor_stream_register(
         self,
@@ -846,6 +925,40 @@ class RoRConnection:
             size=len(payload),
             payload=payload
         ))
+
+    async def send_stream_data(self, sid: int, stream_data: StreamData):
+        """Sends stream data to the server.
+
+        :param sid: The stream id of the stream to send data to.
+        :param stream_data: The stream data to send.
+        """
+        payload = stream_data.pack()
+        await self._send(StreamDataPacket(
+            type=MessageType.STREAM_DATA,
+            source=self.unique_id,
+            stream_id=sid,
+            size=len(payload),
+            payload=payload,
+        ))
+
+    async def send_actor_stream_data(
+        self,
+        sid: int,
+        stream_data: ActorStreamData,
+        recalculate_time: bool = True
+    ):
+        """Send actor stream data to the server.
+
+        :param sid: The stream ID.
+        :param stream_data: The stream data to send.
+        :param recalculate_time: Whether or not to recalculate the
+        timestamp of the stream data.
+        """
+        if recalculate_time:
+            stream_data.time = math.floor(
+                (time.time() - self.connect_time.timestamp()) * 1000
+            )
+        await self.send_stream_data(sid, stream_data)
 
     async def send_chat(self, message: str):
         """Sends a message to the game chat.
@@ -892,6 +1005,54 @@ class RoRConnection:
             type=MessageType.GAME_CMD,
             source=self.unique_id,
             stream_id=0,
+            size=len(payload),
+            payload=payload
+        ))
+
+    async def move_bot(self, position: Vector3):
+        """Moves the bot to a new position.
+
+        :param position: The position to move the bot to, in meters.
+        """
+        self.character_stream_register.position = position
+
+        stream_data = CharacterPositionStreamData(
+            command=CharacterCommand.POSITION,
+            position=position,
+            rotation=self.character_stream_register.rotation,
+            animation_time=0.0,
+            animation_mode=CharacterAnimation.IDLE_SWAY,
+        )
+
+        payload = stream_data.pack()
+        await self._send(StreamDataPacket(
+            type=MessageType.STREAM_DATA,
+            source=self.unique_id,
+            stream_id=self.character_sid,
+            size=len(payload),
+            payload=payload
+        ))
+
+    async def rotate_bot(self, rotation: float):
+        """Rotates the bot in place.
+
+        :param rotation: The new rotation of the bot, in radians.
+        """
+        self.character_stream_register.rotation = rotation
+
+        stream_data = CharacterPositionStreamData(
+            command=CharacterCommand.POSITION,
+            position=self.character_stream_register.position,
+            rotation=rotation,
+            animation_time=0.0,
+            animation_mode=CharacterAnimation.IDLE_SWAY,
+        )
+
+        payload = stream_data.pack()
+        await self._send(StreamDataPacket(
+            type=MessageType.STREAM_DATA,
+            source=self.unique_id,
+            stream_id=self.character_sid,
             size=len(payload),
             payload=payload
         ))
@@ -1016,14 +1177,14 @@ class RoRConnection:
         """
         return self.get_user(uid).get_current_stream()
 
-    def set_current_stream(self, uid: int, actor_uid: int, sid: int):
+    def set_current_stream(self, uid: int, stream_uid: int, sid: int):
         """Sets the current stream of the user.
 
         :param uid: The uid of the user.
-        :param actor_uid: The uid of the actor.
+        :param stream_uid: The uid of the user this stream belongs to.
         :param sid: The sid of the stream.
         """
-        self.get_user(uid).set_current_stream(actor_uid, sid)
+        self.get_user(uid).set_current_stream(stream_uid, sid)
 
     def set_character_sid(self, uid: int, sid: int):
         """Sets the character stream id of the user.
@@ -1066,38 +1227,52 @@ class RoRConnection:
         """
         self.get_user(uid).set_position(sid, position)
 
-    def get_position(self, uid: int, sid: int = -1) -> Vector3:
-        """Gets the position of the stream.
+    def get_position(self, uid: int, sid: int | None = None) -> Vector3 | None:
+        """Gets the position of the stream. If sid is None, the current
+        stream of the user is used. If the current stream is a chat
+        stream, None is returned.
 
         :param uid: The uid of the user.
-        :param sid: The sid of the stream, defaults to -1
-        :return: The position of the stream.
+        :param sid: The sid of the stream, defaults to None
+        :return: The position of the stream, if available.
         """
-        if sid == -1:
-            return self.get_current_stream(uid).position
+        if sid is None:
+            stream = self.get_current_stream(uid)
         else:
-            return self.get_user(uid).get_stream(sid).position
+            stream = self.get_user(uid).get_stream(sid)
 
-    def set_rotation(self, uid: int, sid: int, rotation: Vector4):
+        if isinstance(stream, ChatStreamRegister):
+            return None
+
+        return stream.position
+
+    def set_rotation(self, uid: int, sid: int, rotation: float):
         """Sets the rotation of the stream.
 
         :param uid: The uid of the user.
         :param sid: The sid of the stream.
-        :param rotation: The rotation to set.
+        :param rotation: The rotation to set in radians.
         """
         self.get_user(uid).set_rotation(sid, rotation)
 
-    def get_rotation(self, uid: int, sid: int = -1) -> Vector4:
-        """Gets the rotation of the stream.
+    def get_rotation(self, uid: int, sid: int | None = None) -> float | None:
+        """Gets the rotation of the stream. If sid is None, the current
+        stream of the user is used. If the current stream is a chat
+        stream, None is returned.
 
         :param uid: The uid of the user.
         :param sid: The sid of the stream, defaults to -1
-        :return: The rotation of the stream.
+        :return: The rotation of the stream in radians, if available.
         """
-        if sid == -1:
-            return self.get_current_stream(uid).rotation
+        if sid is None:
+            stream = self.get_current_stream(uid)
         else:
-            return self.get_user(uid).get_stream(sid).rotation
+            stream = self.get_user(uid).get_stream(sid)
+
+        if isinstance(stream, ChatStreamRegister):
+            return None
+
+        return stream.rotation
 
     def get_online_since(self, uid: int) -> datetime:
         """Gets the online since of the user.
