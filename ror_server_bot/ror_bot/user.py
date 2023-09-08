@@ -3,14 +3,8 @@ from pydantic import BaseModel, Field
 from ror_server_bot import TRUCK_TO_NAME_FILE
 
 from .enums import ActorType, AuthStatus, Color, StreamType
-from .models import (
-    StreamRegister,
-    TruckFile,
-    UserInfo,
-    UserStats,
-    Vector3,
-    Vector4,
-)
+from .models import StreamRegister, TruckFile, UserInfo, UserStats, Vector3
+from .models.messages import ChatStreamRegister
 
 
 class StreamNotFoundError(Exception):
@@ -136,20 +130,14 @@ class User(BaseModel):
         """
         return self.streams[self.current_stream.stream_id]
 
-    def set_current_stream(self, actor_uid: int, stream_id: int):
+    def set_current_stream(self, unique_id: int, stream_id: int):
         """Sets the current stream of the user.
 
-        :param actor_uid: The uid of the actor.
-        :param sid: The sid of the stream.
+        :param unique_id: The id of the user this stream belongs to.
+        :param stream_id: The id of the stream.
         """
-        self.current_stream.unique_id = actor_uid
+        self.current_stream.unique_id = unique_id
         self.current_stream.stream_id = stream_id
-
-        if (
-            stream_id != self.character_stream_id
-            or self.unique_id != actor_uid
-        ):
-            self.set_position(self.character_stream_id, Vector3())
 
     def set_position(self, sid: int, position: Vector3):
         """Sets the position of the user.
@@ -159,54 +147,66 @@ class User(BaseModel):
         """
         stream = self.streams[sid]
 
-        if (
-            (-1, -1, -1) < position < (1, 1, 1)
-            or (-1, -1, -1) < stream.position < (1, 1, 1)
-        ):
-            stream.position = position
+        if isinstance(stream, ChatStreamRegister):
+            return
 
         distance_meters = position.distance(stream.position)
-        if distance_meters < 10:
-            if stream.type is StreamType.CHARACTER:
-                self.stats.meters_walked += distance_meters
-            elif stream.type is StreamType.ACTOR:
-                if stream.actor_type in (
-                    ActorType.CAR,
-                    ActorType.TRUCK,
-                    ActorType.TRAIN
-                ):
-                    self.stats.meters_driven += distance_meters
-                elif stream.actor_type is ActorType.BOAT:
-                    self.stats.meters_sailed += distance_meters
-                elif stream.actor_type is ActorType.AIRPLANE:
-                    self.stats.meters_flown += distance_meters
-        else:
-            stream.position = position
 
-    def get_position(self, sid: int | None) -> Vector3:
+        if distance_meters < 1:
+            return
+
+        stream.position = position
+
+        if stream.type is StreamType.CHARACTER:
+            self.stats.meters_walked += distance_meters
+        elif stream.type is StreamType.ACTOR:
+            if stream.actor_type in (
+                ActorType.CAR,
+                ActorType.TRUCK,
+                ActorType.TRAIN
+            ):
+                self.stats.meters_driven += distance_meters
+            elif stream.actor_type is ActorType.BOAT:
+                self.stats.meters_sailed += distance_meters
+            elif stream.actor_type is ActorType.AIRPLANE:
+                self.stats.meters_flown += distance_meters
+
+    def get_position(self, sid: int | None) -> Vector3 | None:
         """Gets the position of the user.
 
         :param sid: The sid of the stream.
         :return: The position of the user.
         """
         if sid is None:
-            return self.get_current_stream().position
-        return self.streams[sid].position
+            stream = self.get_current_stream()
+        else:
+            stream = self.streams[sid]
 
-    def set_rotation(self, sid: int, rotation: Vector4):
+        if isinstance(stream, ChatStreamRegister):
+            return None
+
+        return stream.position
+
+    def set_rotation(self, sid: int, rotation: float):
         """Sets the rotation of the user.
 
         :param sid: The sid of the stream.
-        :param rotation: The rotation of the user.
+        :param rotation: The rotation of the user in radians.
         """
         self.streams[sid].rotation = rotation
 
-    def get_rotation(self, sid: int | None) -> Vector4:
+    def get_rotation(self, sid: int | None) -> float | None:
         """Gets the rotation of the user.
 
         :param sid: The sid of the stream.
         :return: The rotation of the user.
         """
         if sid is None:
-            return self.get_current_stream().rotation
-        return self.streams[sid].rotation
+            stream = self.get_current_stream()
+        else:
+            stream = self.streams[sid]
+
+        if isinstance(stream, ChatStreamRegister):
+            return None
+
+        return stream.rotation
