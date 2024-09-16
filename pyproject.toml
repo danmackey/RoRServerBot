@@ -89,11 +89,13 @@ select = [
     "YTT",  # flake8-2020
 ]
 ignore = [
-    "S101",   # Use of assert detected
-    "SIM108", # Use ternary operator {contents} instead of if-else-block
-    "SIM110", # Use {repl} instead of for loop
-    "SIM117", # Use a single with statement with multiple contexts instead of nested with statements
-    "UP015",  # Unnecessary open mode parameters
+    "PLR2004", # magic-value-comparison
+    "PLR0913", # Too many arguments
+    "S101",    # Use of assert detected
+    "SIM108",  # Use ternary operator {contents} instead of if-else-block
+    "SIM110",  # Use {repl} instead of for loop
+    "SIM117",  # Use a single with statement with multiple contexts instead of nested with statements
+    "UP015",   # Unnecessary open mode parameters
 ]
 
 
