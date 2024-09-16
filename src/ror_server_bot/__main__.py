@@ -8,7 +8,7 @@ from .ror_bot import RoRClient, RoRClientConfig
 logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    def start():
+    def start() -> None:
         class DiscordClient:
             pass
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     client = RoRClient(config)
 
-    async def main():
+    async def main() -> None:
         async with client:
             while True:
                 await asyncio.sleep(0.1)

@@ -41,8 +41,8 @@ from .packets import (
     WrongVersionPacket,
 )
 from .stats import DistanceStats, GlobalStats, UserStats
-from .truck_file import TruckFile, TruckFilenames
-from .vector import Vector3, Vector4
+from .truck_file import TruckFile
+from .vector import Vector3
 
 __all__ = [
     'ActorStreamRegister',
@@ -75,7 +75,6 @@ __all__ = [
     'StreamRegisterResultPacket',
     'StreamUnregisterPacket',
     'TruckFile',
-    'TruckFilenames',
     'UserInfo',
     'UserInfoPacket',
     'UserInfoLegacyPacket',
@@ -83,7 +82,6 @@ __all__ = [
     'UserLeavePacket',
     'UserStats',
     'Vector3',
-    'Vector4',
     'ActorStreamData',
     'WelcomePacket',
     'WrongPasswordPacket',

@@ -4,7 +4,7 @@ from enum import auto, StrEnum
 from pathlib import Path
 from typing import Annotated, Literal, TYPE_CHECKING
 
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field, TypeAdapter
 
 from ror_server_bot import __version__
 
@@ -55,7 +55,7 @@ class BaseChatCommand(BaseModel):
     def name(self) -> str:
         return self.command.value
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         """Execute the command.
 
         :param client: The client to execute the command for.
@@ -71,7 +71,7 @@ class PrefixCommand(BaseChatCommand):
     def description(self) -> str:
         return 'Get the prefix for commands.'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         await client.send_chat(
             f'The prefix for commands is: {COMMAND_PREFIX}'
         )
@@ -84,7 +84,7 @@ class PingCommand(BaseChatCommand):
     def description(self) -> str:
         return 'Ping the bot.'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         await client.send_chat('pong')
 
 
@@ -118,7 +118,7 @@ class HelpCommand(BaseChatCommand):
         else:
             return f'Invalid command {cmd_name}'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         if len(self.args) == 0:
             message = self.no_args()
         elif len(self.args) == 1:
@@ -145,7 +145,7 @@ class SetStatusCommand(BaseChatCommand):
     def description(self) -> str:
         return f'Set your status to {self.name}.'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         if len(self.args) == 0:
             username = client.server.get_username_colored(uid)
             if self.command is CommandType.BRB:
@@ -171,7 +171,7 @@ class GetVersionCommand(BaseChatCommand):
     def description(self) -> str:
         return 'Get the version of the bot.'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         await client.send_chat(f'RoR Server Bot v{__version__}')
 
 
@@ -186,7 +186,7 @@ class CountdownCommand(BaseChatCommand):
     def usage(self) -> str:
         return f'{super().usage} <seconds>'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         if len(self.args) != 1:
             await client.send_chat('Invalid number of arguments')
             return
@@ -210,7 +210,7 @@ class CountdownCommand(BaseChatCommand):
         time: float = 1
 
         @client.server.on(RoRClientEvents.FRAME_STEP)
-        async def on_frame_step(delta: float):
+        async def on_frame_step(delta: float) -> None:
             # nonlocal is needed to modify the time and seconds variables
             nonlocal time, seconds
 
@@ -240,7 +240,7 @@ class MoveRoRBotCommand(BaseChatCommand):
     def usage(self) -> str:
         return f'{super().usage} <x> <y> <z>'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         if len(self.args) != 3:
             await client.send_chat('Invalid number of arguments')
             return
@@ -266,7 +266,7 @@ class RotateRoRBotCommand(BaseChatCommand):
     def usage(self) -> str:
         return f'{super().usage} <degrees>'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         if len(self.args) != 1:
             await client.send_chat('Invalid number of arguments')
             return
@@ -289,7 +289,7 @@ class GetPositionCommand(BaseChatCommand):
     def description(self) -> str:
         return 'Get your current position on the map.'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         position = client.server.get_position(uid)
         await client.send_chat(f'Your position is {position:.2f}')
 
@@ -301,7 +301,7 @@ class GetRotationCommand(BaseChatCommand):
     def description(self) -> str:
         return 'Get your current rotation on the map.'
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         rot_rad = client.server.get_rotation(uid)
 
         if rot_rad is None:
@@ -344,7 +344,7 @@ class StreamRecorderCommand(BaseChatCommand):
         client: 'RoRClient',
         uid: int,
         sid: int
-    ):
+    ) -> None:
         match self.subcommand:
             case (
                 StreamRecorderSubcommand.START | StreamRecorderSubcommand.PLAY
@@ -364,7 +364,7 @@ class StreamRecorderCommand(BaseChatCommand):
             case _:
                 await client.send_chat('Invalid subcommand')
 
-    async def playback(self, client: 'RoRClient'):
+    async def playback(self, client: 'RoRClient') -> None:
         if self.subcommand in (
             StreamRecorderSubcommand.START, StreamRecorderSubcommand.PLAY
         ):
@@ -394,7 +394,7 @@ class StreamRecorderCommand(BaseChatCommand):
                 case _:
                     await client.send_chat('Invalid subcommand')
 
-    async def recordings(self, client: 'RoRClient'):
+    async def recordings(self, client: 'RoRClient') -> None:
         if client.stream_recorder.available_recordings:
             files = '\n'.join(
                 file.name for file in
@@ -404,7 +404,7 @@ class StreamRecorderCommand(BaseChatCommand):
         else:
             await client.send_chat('No recordings available')
 
-    async def execute(self, client: 'RoRClient', uid: int):
+    async def execute(self, client: 'RoRClient', uid: int) -> None:
         user = client.server.get_user(uid)
         if user.auth_status not in AuthStatus.MOD | AuthStatus.ADMIN:
             await client.send_chat('You do not have permission to do that.')
@@ -452,10 +452,15 @@ ChatCommandTypes = (
 
 ChatCommand = Annotated[ChatCommandTypes, Field(discriminator='command')]
 
+ChatCommandValidator = TypeAdapter(ChatCommand)
+
 
 def chat_command_factory(message: str) -> ChatCommand:
     command, *args = message.split(' ')
-    return RootModel[ChatCommand].model_validate({
+    chat_command = ChatCommandValidator.validate_python({
         'command': command,
         'args': args
-    }).root
+    })
+    if not isinstance(chat_command, BaseChatCommand):
+        raise ValueError('Invalid chat command')
+    return chat_command

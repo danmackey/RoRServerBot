@@ -16,7 +16,7 @@ class GlobalStats(DistanceStats):
     user_count: int = 0
     connection_times: list[timedelta] = Field(default=[])
 
-    def add_user(self, username: str):
+    def add_user(self, username: str) -> None:
         self.usernames.add(username)
         self.user_count += 1
 

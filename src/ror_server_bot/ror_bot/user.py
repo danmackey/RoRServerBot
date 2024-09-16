@@ -83,7 +83,7 @@ class User(BaseModel):
         """Get the ids of the streams the user has."""
         return list(self.streams.keys())
 
-    def add_stream(self, stream: StreamRegister):
+    def add_stream(self, stream: StreamRegister) -> None:
         """Adds a stream to the user.
 
         :param stream: The stream to add.
@@ -100,7 +100,7 @@ class User(BaseModel):
             self.chat_stream_id = stream.origin_stream_id
         self.streams[stream.origin_stream_id] = stream
 
-    def delete_stream(self, stream_id: int):
+    def delete_stream(self, stream_id: int) -> None:
         """Deletes a stream from the user.
 
         :param stream_id: The stream id of the stream to delete.
@@ -130,7 +130,7 @@ class User(BaseModel):
         """
         return self.streams[self.current_stream.stream_id]
 
-    def set_current_stream(self, unique_id: int, stream_id: int):
+    def set_current_stream(self, unique_id: int, stream_id: int) -> None:
         """Sets the current stream of the user.
 
         :param unique_id: The id of the user this stream belongs to.
@@ -139,7 +139,7 @@ class User(BaseModel):
         self.current_stream.unique_id = unique_id
         self.current_stream.stream_id = stream_id
 
-    def set_position(self, sid: int, position: Vector3):
+    def set_position(self, sid: int, position: Vector3) -> None:
         """Sets the position of the user.
 
         :param sid: The sid of the stream.
@@ -187,7 +187,7 @@ class User(BaseModel):
 
         return stream.position
 
-    def set_rotation(self, sid: int, rotation: float):
+    def set_rotation(self, sid: int, rotation: float) -> None:
         """Sets the rotation of the user.
 
         :param sid: The sid of the stream.

@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from types import TracebackType
+from typing import Self
 
 from .commands import chat_command_factory, COMMAND_PREFIX
 from .enums import AuthStatus, RoRClientEvents
@@ -91,7 +93,7 @@ class RoRClient:
         """The authentication status of the client."""
         return self.server.auth_status
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         for attempt in range(self._reconnection_tries):
             try:
                 logger.info(
@@ -123,21 +125,26 @@ class RoRClient:
 
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
-        await self.server.__aexit__(exc_type, exc, tb)
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        await self.server.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def _on_frame_step(self, delta: float):
+    async def _on_frame_step(self, delta: float) -> None:
         if self._announcements_enabled:
             message = self._announcements_handler.try_next(delta)
 
             if message is not None:
                 await self.server.send_chat(message)
 
-    async def _on_chat(self, uid: int, msg: str):
+    async def _on_chat(self, uid: int, msg: str) -> None:
         if msg.startswith(COMMAND_PREFIX):
             await self._perform_command(uid, msg)
 
-    async def _perform_command(self, uid: int, msg: str):
+    async def _perform_command(self, uid: int, msg: str) -> None:
         logger.info('User %d sent command: %r', uid, msg)
         try:
             command = chat_command_factory(msg[len(COMMAND_PREFIX):])
@@ -160,14 +167,14 @@ class RoRClient:
                 stacklevel=2
             )
 
-    async def send_chat(self, message: str):
+    async def send_chat(self, message: str) -> None:
         """Send a chat message to the server.
 
         :param message: The message to send.
         """
         await self.server.send_chat(message)
 
-    async def send_private_chat(self, uid: int, message: str):
+    async def send_private_chat(self, uid: int, message: str) -> None:
         """Send a private chat message to a user.
 
         :param uid: The user's UID.
@@ -175,7 +182,7 @@ class RoRClient:
         """
         await self.server.send_private_chat(uid, message)
 
-    async def kick(self, uid: int, reason: str = 'No reason given'):
+    async def kick(self, uid: int, reason: str = 'No reason given') -> None:
         """Kicks a user from the server.
 
         :param uid: The uid of the user to kick.
@@ -184,7 +191,7 @@ class RoRClient:
         """
         await self.send_chat(f'!kick {uid} {reason}')
 
-    async def ban(self, uid: int, reason: str = 'No reason given'):
+    async def ban(self, uid: int, reason: str = 'No reason given') -> None:
         """Bans a user from the server.
 
         :param uid: The uid of the user to ban.
@@ -193,7 +200,7 @@ class RoRClient:
         """
         await self.send_chat(f'!ban {uid} {reason}')
 
-    async def say(self, uid: int, message: str):
+    async def say(self, uid: int, message: str) -> None:
         """Send a message as a user anonymously.
 
         :param uid: The uid of the user to send the message to. If -1,
@@ -202,21 +209,21 @@ class RoRClient:
         """
         await self.send_chat(f'!say {uid} {message}')
 
-    async def send_game_cmd(self, cmd: str):
+    async def send_game_cmd(self, cmd: str) -> None:
         """Send a game command to the server.
 
         :param cmd: The command to send.
         """
         await self.server.send_game_cmd(cmd)
 
-    async def move_bot(self, position: Vector3):
+    async def move_bot(self, position: Vector3) -> None:
         """Move the bot to a position.
 
         :param position: The position to move the bot to, in meters.
         """
         await self.server.move_bot(position)
 
-    async def rotate_bot(self, rotation: float):
+    async def rotate_bot(self, rotation: float) -> None:
         """Rotate the bot to a rotation.
 
         :param rotation: The new rotation of the bot, in radians.

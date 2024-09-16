@@ -3,6 +3,7 @@ import struct
 from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator
+from pydantic.functional_validators import _V2Validator
 
 from ror_server_bot import pformat, RORNET_VERSION
 from ror_server_bot.ror_bot.enums import (
@@ -23,7 +24,7 @@ from .vector import Vector3
 logger = logging.getLogger(__name__)
 
 
-def strip_nulls_after(*fields: str):
+def strip_nulls_after(*fields: str) -> _V2Validator:
     """A validator that strips null characters from provided fields."""
     def __strip_null_character(v: str) -> str:
         return v.strip('\x00')
@@ -53,7 +54,8 @@ class Message(BaseModel):
         return cls.model_validate(
             dict(zip(
                 cls.model_fields.keys(),
-                struct.unpack(cls.STRUCT_FORMAT, data)
+                struct.unpack(cls.STRUCT_FORMAT, data),
+                strict=True
             ))
         )
 
@@ -337,7 +339,8 @@ class ActorStreamRegister(Message, BaseStreamRegister):
         return cls.model_validate(
             dict(zip(
                 cls.model_fields.keys(),
-                struct.unpack(cls.STRUCT_FORMAT, data)
+                struct.unpack(cls.STRUCT_FORMAT, data),
+                strict=True
             ))
         )
 
@@ -424,7 +427,8 @@ class CharacterPositionStreamData(Message):
         return cls.model_validate(
             dict(zip(
                 cls.model_fields.keys(),
-                (command, Vector3(x=x, y=y, z=z), *values)
+                (command, Vector3(x=x, y=y, z=z), *values),
+                strict=True
             ))
         )
 
@@ -469,7 +473,8 @@ class CharacterAttachStreamData(Message):
         return cls.model_validate(
             dict(zip(
                 cls.model_fields.keys(),
-                struct.unpack(cls.STRUCT_FORMAT, data)
+                struct.unpack(cls.STRUCT_FORMAT, data),
+                strict=True
             ))
         )
 
@@ -575,7 +580,8 @@ class ActorStreamData(Message):
         return cls.model_validate(
             dict(zip(
                 cls.model_fields.keys(),
-                (*values, Vector3(x=x, y=y, z=z), node_data)
+                (*values, Vector3(x=x, y=y, z=z), node_data),
+                strict=True
             ))
         )
 

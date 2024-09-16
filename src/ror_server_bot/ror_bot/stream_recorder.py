@@ -70,12 +70,13 @@ class Recording(BaseModel):
     _stream_id: int | None = None
 
     @model_validator(mode='after')
-    def __default_filename(self):
+    def __default_filename(self) -> Self:
         if self.filename == Path():
             time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
             uid = self.user.unique_id
             sid = self.stream.origin_stream_id
             self.filename = Path(f'{uid:04d}-{sid:02d}-{time}.rec')
+        return self
 
     @property
     def playback(self) -> PlaybackStatus:
@@ -150,7 +151,7 @@ class Recording(BaseModel):
         uid: int,
         stream: StreamRegister,
         stream_data: StreamData
-    ):
+    ) -> None:
         """Record a stream. This is a callback for the RoRConnection. It is
         called when stream data is received.
 
@@ -175,7 +176,7 @@ class Recording(BaseModel):
 
         self.frames.append(stream_data.pack())
 
-    async def _on_frame_step(self, dt: float):
+    async def _on_frame_step(self, dt: float) -> None:
         """Advance the recording by one frame."""
         if self._playback is PlaybackStatus.PLAYING:
             self._time_delta += dt
@@ -201,7 +202,7 @@ class Recording(BaseModel):
                     self._curr_frame_idx = 1
                     self._last_frame_idx = 0
 
-    def save(self):
+    def save(self) -> None:
         """Save the recording to a file."""
         if not self.frames:
             raise StreamRecordingError('ERROR-NO_DATA_RECORDED')
@@ -220,7 +221,7 @@ class Recording(BaseModel):
         with open(self.full_path, 'wb') as file:
             file.write(json.dumps(data).encode())
 
-    def start_recording(self):
+    def start_recording(self) -> None:
         """Start recording. This will attach a listener to the RoRConnection
         to record the stream data.
         """
@@ -231,17 +232,17 @@ class Recording(BaseModel):
             self._on_stream_data
         )
 
-    def pause_recording(self):
+    def pause_recording(self) -> None:
         """Pause recording."""
         logger.info('[REC] Pausing recording %s', self.filename)
         self._recording = RecordingStatus.PAUSED
 
-    def resume_recording(self):
+    def resume_recording(self) -> None:
         """Unpause recording."""
         logger.info('[REC] Resuming recording %s', self.filename)
         self._recording = RecordingStatus.RECORDING
 
-    def stop_recording(self):
+    def stop_recording(self) -> None:
         """Stop recording. This will remove the listener from the RoRConnection
         that was recording the stream data.
         """
@@ -255,7 +256,7 @@ class Recording(BaseModel):
             self._on_stream_data
         )
 
-    async def play(self):
+    async def play(self) -> None:
         """Play the recording. This will stream the recording to the
         server."""
         logger.info('[REC] Playing recording %s', self.filename)
@@ -264,20 +265,24 @@ class Recording(BaseModel):
         self._stream_id = await self.server.register_stream(self.stream)
         self.server.on(RoRClientEvents.FRAME_STEP, self._on_frame_step)
 
-    def pause_playback(self):
+    def pause_playback(self) -> None:
         """Pause playback."""
         logger.info('[REC] Pausing playback %s', self.filename)
         self._playback = PlaybackStatus.PAUSED
 
-    def resume_playback(self):
+    def resume_playback(self) -> None:
         """Resume playback."""
         logger.info('[REC] Resuming playback %s', self.filename)
         self._playback = PlaybackStatus.PLAYING
 
-    async def stop_playback(self):
+    async def stop_playback(self) -> None:
         logger.info('[REC] Stopping playback %s', self.filename)
 
         self.pause_playback()
+
+        if self._stream_id is None:
+            raise StreamRecordingError('ERROR-NO_STREAM_ID')
+
         await self.server.unregister_stream(self._stream_id)
         self.server.remove_listener(
             RoRClientEvents.FRAME_STEP,
@@ -286,7 +291,7 @@ class Recording(BaseModel):
 
 
 class UserRecordings(dict[int, Recording]):
-    def __init__(self, uid: int):
+    def __init__(self, uid: int) -> None:
         self.uid = uid
         super().__init__()
 
@@ -299,7 +304,7 @@ class UserRecordings(dict[int, Recording]):
         user: UserInfo,
         stream: ActorStreamRegister,
         filename: Path | None = None,
-    ):
+    ) -> None:
         """Start recording for the given user and stream.
 
         :param user: The user info for the user to record.
@@ -320,7 +325,7 @@ class UserRecordings(dict[int, Recording]):
 
         recording.start_recording()
 
-    def pause_recording(self, sid: int | None = None):
+    def pause_recording(self, sid: int | None = None) -> None:
         """Pause recording. If sid is None, then all recordings for the
         user will be paused. Otherwise, only the recording with the
         given sid will be paused.
@@ -333,7 +338,7 @@ class UserRecordings(dict[int, Recording]):
         for recording in recordings:
             recording.pause_recording()
 
-    def resume_recording(self, sid: int | None = None):
+    def resume_recording(self, sid: int | None = None) -> None:
         """Unpause recording. If sid is None, then all recordings for the
         user will be unpaused. Otherwise, only the recording with the
         given sid will be unpaused.
@@ -366,7 +371,7 @@ class UserRecordings(dict[int, Recording]):
 
 
 class StreamRecorder:
-    def __init__(self, server: RoRConnection):
+    def __init__(self, server: RoRConnection) -> None:
         try:
             last_recording = max(
                 RECORDINGS_PATH.glob('*.rec'),
@@ -395,7 +400,7 @@ class StreamRecorder:
         user: UserInfo,
         stream_id: int,
         filename: Path | None = None,
-    ):
+    ) -> None:
         stream = self.server.get_stream(user.unique_id, stream_id)
 
         if not isinstance(stream, ActorStreamRegister):
@@ -441,19 +446,19 @@ class StreamRecorder:
 
         return self.last_recording.name
 
-    def pause_recording(self, uid: int, stream_id: int | None = None):
+    def pause_recording(self, uid: int, stream_id: int | None = None) -> None:
         if uid not in self.recordings:
             raise StreamRecordingError(f'ERROR-NO_RECORDINGS_FOR_USER-{uid}')
 
         self.recordings[uid].pause_recording(stream_id)
 
-    def resume_recording(self, uid: int, stream_id: int | None = None):
+    def resume_recording(self, uid: int, stream_id: int | None = None) -> None:
         if uid not in self.recordings:
             raise StreamRecordingError(f'ERROR-NO_RECORDINGS_FOR_USER-{uid}')
 
         self.recordings[uid].resume_recording(stream_id)
 
-    async def play_recording(self, filename: Path | None):
+    async def play_recording(self, filename: Path | None) -> None:
         if filename is None:
             if self.last_recording is None:
                 raise StreamRecordingError('ERROR-NO_RECORDING_FOUND')
@@ -469,17 +474,17 @@ class StreamRecorder:
         await recording.play()
         self.playlist.append(recording)
 
-    def pause_playback(self, stream_id: int | None = None):
+    def pause_playback(self, stream_id: int | None = None) -> None:
         for recording in self.playlist:
             if stream_id is None or recording.stream_id == stream_id:
                 recording.pause_playback()
 
-    def resume_playback(self, stream_id: int | None = None):
+    def resume_playback(self, stream_id: int | None = None) -> None:
         for recording in self.playlist:
             if stream_id is None or recording.stream_id == stream_id:
                 recording.resume_playback()
 
-    async def stop_playback(self, stream_id: int | None = None):
+    async def stop_playback(self, stream_id: int | None = None) -> None:
         for recording in self.playlist:
             if stream_id is None or recording.stream_id == stream_id:
                 await recording.stop_playback()

@@ -5,10 +5,12 @@ import logging
 import math
 import struct
 import time
+from collections.abc import Callable
 from datetime import datetime
 from functools import singledispatchmethod
 from itertools import chain
-from typing import Callable
+from types import TracebackType
+from typing import Any
 
 from pyee import AsyncIOEventEmitter
 
@@ -141,7 +143,7 @@ class RoRConnection:
         self._event_emitter.add_listener('new_listener', self._new_listener)
         self._event_emitter.add_listener('error', self._error)
 
-        self._server_info: ServerInfo
+        self._server_info: ServerInfo | None = None
         self._user_info = UserInfo(
             auth_status=AuthStatus.BOT,
             slot_num=-2,
@@ -235,7 +237,7 @@ class RoRConnection:
         return position
 
     @position.setter
-    def position(self, value: Vector3):
+    def position(self, value: Vector3) -> None:
         self.set_position(self.unique_id, self.character_sid, value)
 
     @property
@@ -248,7 +250,7 @@ class RoRConnection:
         return rotation
 
     @rotation.setter
-    def rotation(self, value: float):
+    def rotation(self, value: float) -> None:
         self.set_rotation(self.unique_id, self.character_sid, value)
 
     async def __aenter__(self) -> 'RoRConnection':
@@ -299,7 +301,12 @@ class RoRConnection:
 
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Disconnects from the server.
 
         :param exc_type: The exception type.
@@ -317,7 +324,7 @@ class RoRConnection:
             )
         )
 
-        await self._task_group.__aexit__(exc_type, exc, tb)
+        await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
 
         if self._reader_task is not None:
             self._reader_task.cancel()
@@ -335,7 +342,7 @@ class RoRConnection:
 
         self._is_connected = False
 
-    async def __send_hello(self):
+    async def __send_hello(self) -> None:
         logger.info('Sending Hello Message')
 
         self._server_info = None
@@ -355,7 +362,7 @@ class RoRConnection:
                 break
             await asyncio.sleep(0.1)
 
-    async def __send_welcome(self):
+    async def __send_welcome(self) -> None:
         logger.info('Sending User Info: %s', self._user_info)
 
         payload = self._user_info.pack()
@@ -372,7 +379,7 @@ class RoRConnection:
                 break
             await asyncio.sleep(0.1)
 
-    async def __register_streams(self):
+    async def __register_streams(self) -> None:
         chat_stream_reg = ChatStreamRegister(
             type=StreamType.CHAT,
             status=0,
@@ -398,7 +405,7 @@ class RoRConnection:
 
         await self.register_stream(char_stream_reg)
 
-    async def __reader_loop(self):
+    async def __reader_loop(self) -> None:
         """The main reader loop. Handles packets sent by the server.
 
         This function should not be called directly.
@@ -424,7 +431,7 @@ class RoRConnection:
 
             if len(payload) != packet.size:
                 raise ValueError(
-                    f'Packet size mismatch: data={payload} packet={packet}'
+                    f'Packet size mismatch: data={payload!r} packet={packet}'
                 )
 
             packet.payload = payload
@@ -433,7 +440,7 @@ class RoRConnection:
 
             await asyncio.sleep(0.01)
 
-    async def __heartbeat_loop(self):
+    async def __heartbeat_loop(self) -> None:
         """The heartbeat loop. Sends a character position stream packet
         to the server on a constant interval. This is done to prevent
         the server from kicking the client for inactivity.
@@ -469,7 +476,7 @@ class RoRConnection:
 
         start_time = time.time()
         curr_time = start_time
-        delta = 0
+        delta = 0.0
         while self._is_connected:
             prev_time = curr_time
             curr_time = time.time()
@@ -491,11 +498,11 @@ class RoRConnection:
 
             await asyncio.sleep(0.1)
 
-    async def __frame_step_loop(self):
+    async def __frame_step_loop(self) -> None:
         """Send frame_step events at a stable rate."""
         start_time = time.time()
         curr_time = start_time
-        delta = 0
+        delta = 0.0
         while True:
             prev_time = curr_time
             curr_time = time.time()
@@ -507,7 +514,7 @@ class RoRConnection:
 
             await asyncio.sleep(0.01)
 
-    async def _send(self, packet: Packet):
+    async def _send(self, packet: Packet) -> None:
         """Sends a message to the server.
 
         :param header: The packet of the message.
@@ -529,7 +536,7 @@ class RoRConnection:
             await self._writer.drain()
 
     @singledispatchmethod
-    async def _parse_packet(self, packet: Packet):
+    async def _parse_packet(self, packet: Packet) -> None:
         """Parses a packet from the server.
 
         :param packet: The packet to parse.
@@ -537,7 +544,7 @@ class RoRConnection:
         raise NotImplementedError(f'No parse method for packet {packet.type}')
 
     @_parse_packet.register
-    async def _(self, packet: HelloPacket):
+    async def _(self, packet: HelloPacket) -> None:
         self._server_info = ServerInfo.from_bytes(packet.payload)
         logger.info('Received Server Info: %s', self._server_info)
 
@@ -551,7 +558,7 @@ class RoRConnection:
             | WrongVersionPacket
             | BannedPacket
         ),
-    ):
+    ) -> None:
         match packet.type:
             case MessageType.WELCOME:
                 self._user_info = UserInfo.from_bytes(packet.payload)
@@ -571,7 +578,7 @@ class RoRConnection:
                 )
 
     @_parse_packet.register
-    async def _(self, packet: NetQualityPacket):
+    async def _(self, packet: NetQualityPacket) -> None:
         prev_nq = self._net_quality
 
         curr_nq, *_ = struct.unpack('I', packet.payload)
@@ -598,7 +605,7 @@ class RoRConnection:
             self._emit(RoRClientEvents.NET_QUALITY, curr_nq)
 
     @_parse_packet.register
-    async def _(self, packet: UserJoinPacket):
+    async def _(self, packet: UserJoinPacket) -> None:
         if packet.source == self.unique_id:
             return
 
@@ -615,7 +622,7 @@ class RoRConnection:
         self._emit(RoRClientEvents.USER_JOIN, packet.source, user_info)
 
     @_parse_packet.register
-    async def _(self, packet: UserInfoPacket):
+    async def _(self, packet: UserInfoPacket) -> None:
         user_info = UserInfo.from_bytes(packet.payload)
 
         self.update_user(user_info)
@@ -629,7 +636,7 @@ class RoRConnection:
         self._emit(RoRClientEvents.USER_INFO, packet.source, user_info)
 
     @_parse_packet.register
-    async def _(self, packet: UserLeavePacket):
+    async def _(self, packet: UserLeavePacket) -> None:
         user = self.get_user(packet.source)
 
         logger.info(
@@ -647,7 +654,7 @@ class RoRConnection:
         self._emit(RoRClientEvents.USER_LEAVE, packet.source, user)
 
     @_parse_packet.register
-    async def _(self, packet: ChatPacket | PrivateChatPacket):
+    async def _(self, packet: ChatPacket | PrivateChatPacket) -> None:
         message = packet.payload.decode().strip('\x00')
 
         logger.info(
@@ -666,7 +673,7 @@ class RoRConnection:
             self._emit(event, packet.source, message)
 
     @_parse_packet.register
-    async def _(self, packet: GameCmdPacket):
+    async def _(self, packet: GameCmdPacket) -> None:
         if packet.source == self.unique_id:
             return
 
@@ -682,7 +689,7 @@ class RoRConnection:
             self._emit(RoRClientEvents.GAME_CMD, packet.source, game_cmd)
 
     @_parse_packet.register
-    async def _(self, packet: StreamRegisterPacket):
+    async def _(self, packet: StreamRegisterPacket) -> None:
         stream = stream_register_factory(packet.payload)
 
         self.add_stream(stream)
@@ -704,7 +711,7 @@ class RoRConnection:
         self._emit(RoRClientEvents.STREAM_REGISTER, packet.source, stream)
 
     @_parse_packet.register
-    async def _(self, packet: StreamRegisterResultPacket):
+    async def _(self, packet: StreamRegisterResultPacket) -> None:
         stream = stream_register_factory(packet.payload)
 
         logger.info(
@@ -722,7 +729,7 @@ class RoRConnection:
         )
 
     @_parse_packet.register
-    async def _(self, packet: StreamDataPacket):
+    async def _(self, packet: StreamDataPacket) -> None:
         if packet.source == self.unique_id:
             return
 
@@ -750,10 +757,10 @@ class RoRConnection:
                         stream_data.rotation
                     )
 
-                if isinstance(stream_data, (
-                    CharacterPositionStreamData,
-                    ActorStreamData
-                )):
+                if isinstance(
+                    stream_data,
+                    CharacterPositionStreamData | ActorStreamData
+                ):
                     self.set_position(
                         packet.source,
                         packet.stream_id,
@@ -784,7 +791,7 @@ class RoRConnection:
             )
 
     @_parse_packet.register
-    async def _(self, packet: StreamUnregisterPacket):
+    async def _(self, packet: StreamUnregisterPacket) -> None:
         if len(packet.payload) != 0:
             raise ValueError('Stream unregister packet has data')
 
@@ -803,7 +810,7 @@ class RoRConnection:
             packet.stream_id
         )
 
-    def _new_listener(self, event: str, listener: Callable):
+    def _new_listener(self, event: str, listener: Callable) -> None:
         """Handles new listener events.
 
         :param event: The event that was added.
@@ -812,14 +819,14 @@ class RoRConnection:
         name = listener.__name__
         logger.debug('[EVENT] event=%r new_listener=%r', event, name)
 
-    def _error(self, error: Exception):
+    def _error(self, error: Exception) -> None:
         """Handles error events.
 
         :param error: The error that was emitted.
         """
         logger.error('[EVENT] error=%r', error, exc_info=True, stacklevel=2)
 
-    def _emit(self, event: RoRClientEvents, *args, **kwargs):
+    def _emit(self, event: RoRClientEvents, *args: Any, **kwargs: Any) -> None:
         """Emit an event on the event emitter.
 
         :param event: The event to emit.
@@ -835,7 +842,11 @@ class RoRConnection:
             )
         self._event_emitter.emit(event.value, *args, **kwargs)
 
-    def on(self, event: RoRClientEvents, listener: Callable | None = None):
+    def on(
+        self,
+        event: RoRClientEvents,
+        listener: Callable | None = None
+    ) -> Callable | Callable[[Callable], Callable]:
         """Decorator to register an event handler on the event emitter.
 
         :param event: The event to register the handler on.
@@ -843,7 +854,11 @@ class RoRConnection:
         """
         return self._event_emitter.on(event.value, listener)
 
-    def once(self, event: RoRClientEvents, listener: Callable | None = None):
+    def once(
+        self,
+        event: RoRClientEvents,
+        listener: Callable | None = None
+    ) -> Callable:
         """Decorator to register a one-time event handler on the event
         emitter.
 
@@ -852,7 +867,11 @@ class RoRConnection:
         """
         return self._event_emitter.once(event.value, listener)
 
-    def remove_listener(self, event: RoRClientEvents, listener: Callable):
+    def remove_listener(
+        self,
+        event: RoRClientEvents,
+        listener: Callable
+    ) -> None:
         """Removes an event handler from the event emitter.
 
         :param event: The event to remove the handler from.
@@ -893,7 +912,7 @@ class RoRConnection:
 
         return stream.origin_stream_id
 
-    async def unregister_stream(self, stream_id: int):
+    async def unregister_stream(self, stream_id: int) -> None:
         """Unregisters a stream with the server as the client.
 
         :param stream_id: The stream id of the stream to unregister.
@@ -909,7 +928,7 @@ class RoRConnection:
         self,
         stream: ActorStreamRegister,
         status: ActorStreamStatus
-    ):
+    ) -> None:
         """Replies to an actor stream register request. This will
         determine what upstream arrow will be displayed on the client.
 
@@ -926,7 +945,11 @@ class RoRConnection:
             payload=payload
         ))
 
-    async def send_stream_data(self, sid: int, stream_data: StreamData):
+    async def send_stream_data(
+        self,
+        sid: int,
+        stream_data: StreamData
+    ) -> None:
         """Sends stream data to the server.
 
         :param sid: The stream id of the stream to send data to.
@@ -946,7 +969,7 @@ class RoRConnection:
         sid: int,
         stream_data: ActorStreamData,
         recalculate_time: bool = True
-    ):
+    ) -> None:
         """Send actor stream data to the server.
 
         :param sid: The stream ID.
@@ -960,7 +983,7 @@ class RoRConnection:
             )
         await self.send_stream_data(sid, stream_data)
 
-    async def send_chat(self, message: str):
+    async def send_chat(self, message: str) -> None:
         """Sends a message to the game chat.
 
         :param message: The message to send.
@@ -976,7 +999,7 @@ class RoRConnection:
             payload=payload
         ))
 
-    async def send_private_chat(self, uid: int, message: str):
+    async def send_private_chat(self, uid: int, message: str) -> None:
         """Sends a private message to a user.
 
         :param uid: The uid of the user to send the message to.
@@ -993,7 +1016,7 @@ class RoRConnection:
             payload=payload
         ))
 
-    async def send_game_cmd(self, command: str):
+    async def send_game_cmd(self, command: str) -> None:
         """Sends a game command (Angelscript) to the server.
 
         :param command: The command to send.
@@ -1009,7 +1032,7 @@ class RoRConnection:
             payload=payload
         ))
 
-    async def move_bot(self, position: Vector3):
+    async def move_bot(self, position: Vector3) -> None:
         """Moves the bot to a new position.
 
         :param position: The position to move the bot to, in meters.
@@ -1033,7 +1056,7 @@ class RoRConnection:
             payload=payload
         ))
 
-    async def rotate_bot(self, rotation: float):
+    async def rotate_bot(self, rotation: float) -> None:
         """Rotates the bot in place.
 
         :param rotation: The new rotation of the bot, in radians.
@@ -1084,7 +1107,7 @@ class RoRConnection:
             )
             raise UserNotFoundError(f'User uid={uid} not found') from e
 
-    def add_user(self, user_info: UserInfo):
+    def add_user(self, user_info: UserInfo) -> None:
         """Adds a client to the stream manager.
 
         :param user_info: The user info of the client to add.
@@ -1105,7 +1128,7 @@ class RoRConnection:
             user_info
         )
 
-    def update_user(self, user_info: UserInfo):
+    def update_user(self, user_info: UserInfo) -> None:
         """Updates a client in the stream manager.
 
         :param user_info: The user info of the client to update.
@@ -1122,7 +1145,7 @@ class RoRConnection:
             user_info
         )
 
-    def delete_user(self, uid: int):
+    def delete_user(self, uid: int) -> None:
         """Deletes a client from the stream manager.
 
         :param uid: The uid of the client to delete.
@@ -1145,14 +1168,14 @@ class RoRConnection:
             user
         )
 
-    def add_stream(self, stream: StreamRegister):
+    def add_stream(self, stream: StreamRegister) -> None:
         """Adds a stream to the stream manager.
 
         :param stream: The stream to add.
         """
         self.get_user(stream.origin_source_id).add_stream(stream)
 
-    def delete_stream(self, uid: int, sid: int):
+    def delete_stream(self, uid: int, sid: int) -> None:
         """Deletes a stream from the stream manager.
 
         :param uid: The uid of the stream to delete.
@@ -1177,7 +1200,7 @@ class RoRConnection:
         """
         return self.get_user(uid).get_current_stream()
 
-    def set_current_stream(self, uid: int, stream_uid: int, sid: int):
+    def set_current_stream(self, uid: int, stream_uid: int, sid: int) -> None:
         """Sets the current stream of the user.
 
         :param uid: The uid of the user.
@@ -1186,7 +1209,7 @@ class RoRConnection:
         """
         self.get_user(uid).set_current_stream(stream_uid, sid)
 
-    def set_character_sid(self, uid: int, sid: int):
+    def set_character_sid(self, uid: int, sid: int) -> None:
         """Sets the character stream id of the user.
 
         :param uid: The uid of the user.
@@ -1202,7 +1225,7 @@ class RoRConnection:
         """
         return self.get_user(uid).character_stream_id
 
-    def set_chat_sid(self, uid: int, sid: int):
+    def set_chat_sid(self, uid: int, sid: int) -> None:
         """Sets the chat stream id of the user.
 
         :param uid: The uid of the user.
@@ -1218,7 +1241,7 @@ class RoRConnection:
         """
         return self.get_user(uid).chat_stream_id
 
-    def set_position(self, uid: int, sid: int, position: Vector3):
+    def set_position(self, uid: int, sid: int, position: Vector3) -> None:
         """Sets the position of the stream.
 
         :param uid: The uid of the user.
@@ -1246,7 +1269,7 @@ class RoRConnection:
 
         return stream.position
 
-    def set_rotation(self, uid: int, sid: int, rotation: float):
+    def set_rotation(self, uid: int, sid: int, rotation: float) -> None:
         """Sets the rotation of the stream.
 
         :param uid: The uid of the user.

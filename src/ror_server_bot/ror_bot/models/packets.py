@@ -2,7 +2,7 @@ import struct
 from datetime import datetime
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field, RootModel
+from pydantic import Field, TypeAdapter
 
 from ror_server_bot.ror_bot.enums import MessageType
 
@@ -144,6 +144,8 @@ Packet = Annotated[
     Field(discriminator='type')
 ]
 
+PacketValidator = TypeAdapter(Packet)
+
 
 def packet_factory(
     message_type: int,
@@ -151,9 +153,12 @@ def packet_factory(
     stream_id: int,
     size: int
 ) -> Packet:
-    return RootModel[Packet].model_validate({
+    packet = PacketValidator.validate_python({
         'type': message_type,
         'source': source,
         'stream_id': stream_id,
         'size': size
-    }).root
+    })
+    if not isinstance(packet, BasePacket):
+        raise ValueError('Invalid packet type')
+    return packet

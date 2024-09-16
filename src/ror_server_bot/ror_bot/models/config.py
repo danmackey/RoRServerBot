@@ -42,7 +42,7 @@ class RoRClientConfig(BaseModel):
         def __check_color(cls, v: Any) -> Any:
             # we do this because Color does not
             # always output 6 digit hex strings
-            if isinstance(v, (str, Color)):
+            if isinstance(v, str | Color):
                 return color_to_hex(v)
             return v
 
