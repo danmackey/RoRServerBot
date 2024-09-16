@@ -66,6 +66,15 @@ from .user import StreamNotFoundError, User
 logger = logging.getLogger(__name__)
 
 
+def hash_password(password: str) -> str:
+    """Hashes a password using the SHA1 algorithm.
+
+    :param password: The password to hash.
+    :return: The hashed password.
+    """
+    return hashlib.sha1(password.encode()).hexdigest().upper()  # noqa: S324
+
+
 class UnexpectedMessageError(Exception):
     """An error that occurs when a header with an unexpected message is
     received."""
@@ -130,7 +139,7 @@ class RoRConnection:
 
         self._host = host
         self._port = port
-        self._password = hashlib.sha1(password.encode()).hexdigest().upper()
+        self._password = hash_password(password)
 
         self._net_quality = 0
         self._stream_id = 10  # stream ids under 10 are reserved
@@ -295,6 +304,7 @@ class RoRConnection:
         )
 
         logger.info('Starting frame step loop')
+
         self._frame_step_task = self._task_group.create_task(
             self.__frame_step_loop(),
             name=self.__frame_step_loop.__name__
