@@ -37,7 +37,7 @@ skip-excluded-dirs = true
 allow-direct-references = true
 
 [tool.hatch.version]
-path = "src/ror_server_bot/__init__.py"
+path = "ror_server_bot/__init__.py"
 
 [tool.isort]
 order_by_type = false
@@ -45,7 +45,7 @@ multi_line_output = 3
 include_trailing_comma = true
 
 [tool.mypy]
-mypy_path = "./src"
+mypy_path = "./ror_server_bot"
 python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
