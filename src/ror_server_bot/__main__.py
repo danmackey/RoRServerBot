@@ -6,7 +6,13 @@ import discord
 
 from ror_server_bot.logging import configure_logging
 
-from .ror_bot import RoRClient, RoRClientConfig
+from .ror_bot import (
+    Announcements,
+    RoRClient,
+    RoRClientConfig,
+    ServerConfig,
+    UserConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +41,16 @@ if __name__ == '__main__':
     config = RoRClientConfig(
         id='1',
         enabled=True,
-        server=RoRClientConfig.ServerConfig(
+        server=ServerConfig(
             host='10.90.1.64',
             port=12000,
             password=''
         ),
-        user=RoRClientConfig.UserConfig(
+        user=UserConfig(
             token=''
         ),
         discord_channel_id=-1,
-        announcements=RoRClientConfig.Announcements(
+        announcements=Announcements(
             delay=10,
             enabled=False,
             messages=[

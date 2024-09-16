@@ -17,45 +17,48 @@ def color_to_hex(color: str | Color) -> str:
     ])
 
 
+class ServerConfig(BaseModel):
+    host: str = ''
+    port: int = Field(12000, ge=12000, le=12999)
+    password: str = ''
+
+
+class UserConfig(BaseModel):
+    name: str = 'RoR Server Bot'
+    token: str = ''
+    language: str = 'en_US'
+
+
+class Announcements(BaseModel):
+    delay: int = 300
+    """Delay between announcements in seconds."""
+    enabled: bool = False
+    messages: list[str] = Field(default_factory=list)
+    color: str = Field(default='yellow', validate_default=True)
+    """The color to use for the announcements. Can be a hex string
+    or a color name. If a color name is used, it will be converted
+    to a hex string."""
+
+    @field_validator('color', mode='before')
+    def __check_color(cls, v: Any) -> Any:
+        # we do this because Color does not
+        # always output 6 digit hex strings
+        if isinstance(v, str | Color):
+            return color_to_hex(v)
+        return v
+
+    @model_validator(mode='after')
+    def __set_disabled(self) -> Self:
+        if not self.messages:
+            self.enabled = False
+        return self
+
+    def get_next_announcement(self, time_sec: float) -> str:
+        idx = int((time_sec / self.delay) % len(self.messages))
+        return self.messages[idx]
+
+
 class RoRClientConfig(BaseModel):
-    class ServerConfig(BaseModel):
-        host: str = ''
-        port: int = Field(12000, ge=12000, le=12999)
-        password: str = ''
-
-    class UserConfig(BaseModel):
-        name: str = 'RoR Server Bot'
-        token: str = ''
-        language: str = 'en_US'
-
-    class Announcements(BaseModel):
-        delay: int = 300
-        """Delay between announcements in seconds."""
-        enabled: bool = False
-        messages: list[str] = Field(default_factory=list)
-        color: str = Field(default='yellow', validate_default=True)
-        """The color to use for the announcements. Can be a hex string
-        or a color name. If a color name is used, it will be converted
-        to a hex string."""
-
-        @field_validator('color', mode='before')
-        def __check_color(cls, v: Any) -> Any:
-            # we do this because Color does not
-            # always output 6 digit hex strings
-            if isinstance(v, str | Color):
-                return color_to_hex(v)
-            return v
-
-        @model_validator(mode='after')
-        def __set_disabled(self) -> Self:
-            if not self.messages:
-                self.enabled = False
-            return self
-
-        def get_next_announcement(self, time_sec: float) -> str:
-            idx = int((time_sec / self.delay) % len(self.messages))
-            return self.messages[idx]
-
     id: str
     enabled: bool
     server: ServerConfig
