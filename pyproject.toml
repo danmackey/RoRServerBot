@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "devtools~=0.12.1",
     "discord.py~=2.3.2",
+    "pathvalidate~=3.2.1",
     "pydantic-extra-types~=2.1.0",
     "pydantic~=2.3.0",
     "pyee~=11.0.0",

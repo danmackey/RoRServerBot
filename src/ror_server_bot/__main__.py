@@ -1,13 +1,24 @@
 import asyncio
 import logging
+from pathlib import Path
 
 import discord
+
+from ror_server_bot.logging import configure_logging
 
 from .ror_bot import RoRClient, RoRClientConfig
 
 logger = logging.getLogger(__name__)
 
+
 if __name__ == '__main__':
+    configure_logging(
+        level='DEBUG',
+        console_style='rich',
+        file_type='log',
+        log_dir=Path.cwd() / 'logs',
+    )
+
     def start() -> None:
         class DiscordClient:
             pass

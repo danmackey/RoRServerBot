@@ -8,7 +8,8 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ror_server_bot import pformat, PROJECT_DIRECTORY, RORNET_VERSION
+from ror_server_bot import PROJECT_DIRECTORY, RORNET_VERSION
+from ror_server_bot.logging import pformat
 
 from .enums import RoRClientEvents
 from .models import (

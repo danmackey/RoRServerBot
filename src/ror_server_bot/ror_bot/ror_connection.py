@@ -14,7 +14,8 @@ from typing import Any
 
 from pyee import AsyncIOEventEmitter
 
-from ror_server_bot import pformat, RORNET_VERSION
+from ror_server_bot import RORNET_VERSION
+from ror_server_bot.logging import pformat
 
 from .enums import (
     ActorStreamStatus,

@@ -5,7 +5,8 @@ from typing import Annotated, Any, ClassVar, Literal, Self
 from pydantic import BaseModel, Field, field_validator
 from pydantic.functional_validators import _V2Validator
 
-from ror_server_bot import pformat, RORNET_VERSION
+from ror_server_bot import RORNET_VERSION
+from ror_server_bot.logging import pformat
 from ror_server_bot.ror_bot.enums import (
     ActorStreamStatus,
     ActorType,
