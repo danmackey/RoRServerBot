@@ -7,7 +7,7 @@ name = "ror-server-bot"
 description = "Rigs of Rods Multiplayer Bot for RoRNet 2.44 and Discord"
 readme = "README.md"
 authors = [{ name = "Danny Mackey", email = "danmack768@gmail.com" }]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "devtools~=0.12.1",
     "discord.py~=2.3.2",
@@ -22,21 +22,21 @@ dynamic = ["version"]
 [project.urls]
 "Source code" = "https://github.com/danmackey/RoRServerBot"
 
-[tool.hatch.build]
-skip-excluded-dirs = true
-
 [tool.hatch.envs.default]
-dependencies = ["tox>=4"]
-path = "venv"
-
-[tool.hatch.metadata]
-allow-direct-references = true
+dependencies = ["isort", "mypy", "ruff", "tox"]
+path = ".venv"
 
 [tool.hatch.publish.index]
 disable = true
 
+[tool.hatch.build]
+skip-excluded-dirs = true
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.version]
-path = "ror_server_bot/__init__.py"
+path = "src/ror_server_bot/__init__.py"
 
 [tool.isort]
 order_by_type = false
@@ -44,15 +44,19 @@ multi_line_output = 3
 include_trailing_comma = true
 
 [tool.mypy]
-python_version = 3.11
+mypy_path = "./src"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 explicit_package_bases = true
+disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
 
 [tool.ruff]
 line-length = 79
-target-version = "py38"
+target-version = "py312"
+
+[tool.ruff.lint]
 select = [
     "B",    # flake8-bugbear
     "C4",   # flake8-comprehensions
@@ -84,17 +88,13 @@ select = [
     "YTT",  # flake8-2020
 ]
 ignore = [
-    "PLR2004", # Magic value used in comparison
-    "S101",    # Use of assert detected
-    "S324",    # Probable use of insecure hash functions in `hashlib`
-    "SIM108",  # Use ternary operator {contents} instead of if-else-block
-    "SIM110",  # Use {repl} instead of for loop
-    "SIM117",  # Use a single with statement with multiple contexts instead of nested with statements
-    "UP015",   # Unnecessary open mode parameters
+    "S101",   # Use of assert detected
+    "SIM108", # Use ternary operator {contents} instead of if-else-block
+    "SIM110", # Use {repl} instead of for loop
+    "SIM117", # Use a single with statement with multiple contexts instead of nested with statements
+    "UP015",  # Unnecessary open mode parameters
 ]
+
 
 [tool.ruff.pep8-naming]
 classmethod-decorators = ["classmethod", "pydantic.field_validator"]
-
-[tool.ruff.pylint]
-max-args = 7

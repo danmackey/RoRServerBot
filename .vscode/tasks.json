@@ -1,12 +1,14 @@
 {
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
         {
             "label": "Tox",
             "icon": {
-                "id": "beaker"
+                "id": "beaker",
             },
-            "command": "${command:python.interpreterPath}",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
             "type": "process",
             "args": [
                 "-m",
@@ -17,9 +19,6 @@
                 "kind": "test",
                 "isDefault": true
             },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -28,14 +27,15 @@
                 "showReuseMessage": true,
                 "clear": false
             },
-            "windows": {
-                "command": "${workspaceFolder}\\venv\\Scripts\\python.exe"
-            }
         },
         {
             "label": "Sync Dependencies",
             "icon": {
                 "id": "sync"
+            },
+            "group": {
+                "kind": "none",
+                "isDefault": false
             },
             "command": "hatch",
             "args": [
@@ -53,7 +53,6 @@
                 "showReuseMessage": true,
                 "clear": false
             },
-            "problemMatcher": [ ]
-        }
+        },
     ]
 }
