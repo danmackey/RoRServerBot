@@ -3,7 +3,6 @@ import struct
 from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator
-from pydantic.functional_validators import _V2Validator
 
 from ror_server_bot import RORNET_VERSION
 from ror_server_bot.logging import pformat
@@ -25,7 +24,7 @@ from .vector import Vector3
 logger = logging.getLogger(__name__)
 
 
-def strip_nulls_after(*fields: str) -> _V2Validator:
+def strip_nulls_after_validator(*fields: str):
     """A validator that strips null characters from provided fields."""
     def __strip_null_character(v: str) -> str:
         return v.strip('\x00')
@@ -102,7 +101,7 @@ class ServerInfo(Message):
     """Message of the Day (.motd file contents)."""
 
     # validators
-    _strip_null_character = strip_nulls_after(
+    _strip_null_character = strip_nulls_after_validator(
         'protocol_version',
         'terrain_name',
         'server_name',
@@ -179,7 +178,7 @@ class UserInfo(Message):
         return Color.WHITE.value
 
     # validators
-    _strip_nulls = strip_nulls_after(
+    _strip_nulls = strip_nulls_after_validator(
         'username',
         'user_token',
         'server_password',
@@ -251,7 +250,7 @@ class GenericStreamRegister(Message, BaseStreamRegister):
     name: Literal['chat', 'default']
     reg_data: str = Field(max_length=128)
 
-    _strip_nulls = strip_nulls_after('reg_data')
+    _strip_nulls = strip_nulls_after_validator('reg_data')
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Self:
@@ -328,7 +327,7 @@ class ActorStreamRegister(Message, BaseStreamRegister):
     rotation: float = 0.0
     """The rotation of the actor in radians."""
 
-    _strip_nulls = strip_nulls_after('skin', 'section_config')
+    _strip_nulls = strip_nulls_after_validator('skin', 'section_config')
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Self:
