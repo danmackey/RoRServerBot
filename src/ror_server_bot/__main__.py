@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     configure_logging(
-        level='DEBUG',
+        console_log_level='DEBUG',
         console_style='rich',
         file_type='log',
         log_dir=Path.cwd() / 'logs',
