@@ -55,7 +55,7 @@ class Message(BaseModel):
             dict(zip(
                 cls.model_fields.keys(),
                 struct.unpack(cls.STRUCT_FORMAT, data),
-                strict=True
+                strict=False
             ))
         )
 
@@ -340,7 +340,7 @@ class ActorStreamRegister(Message, BaseStreamRegister):
             dict(zip(
                 cls.model_fields.keys(),
                 struct.unpack(cls.STRUCT_FORMAT, data),
-                strict=True
+                strict=False
             ))
         )
 
