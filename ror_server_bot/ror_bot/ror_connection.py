@@ -668,12 +668,13 @@ class RoRConnection:
     async def _(self, packet: ChatPacket | PrivateChatPacket) -> None:
         message = packet.payload.decode().strip('\x00')
 
-        logger.info(
-            '[%s] from_uid=%d message=%r',
-            'CHAT' if isinstance(packet, ChatPacket) else 'PRIV',
-            packet.source,
-            message
-        )
+        if packet.source != self.unique_id:
+            logger.info(
+                '[%s] from_uid=%d message=%r',
+                'CHAT' if isinstance(packet, ChatPacket) else 'PRIV',
+                packet.source,
+                message
+            )
 
         if message and packet.source != self.unique_id:
             event = (
