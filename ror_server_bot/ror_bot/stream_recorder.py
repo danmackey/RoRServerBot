@@ -250,7 +250,7 @@ class Recording(BaseModel):
         logger.info('[REC] Stopping recording %s', self.filename)
         self._recording = RecordingStatus.STOPPED
 
-        logger.info('[REC] Data %s', self)
+        logger.debug('[REC] Data %s', self)
 
         self.server.remove_listener(
             RoRClientEvents.STREAM_DATA,
