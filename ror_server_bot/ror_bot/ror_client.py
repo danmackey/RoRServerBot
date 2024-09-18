@@ -1,15 +1,55 @@
 import asyncio
 import logging
+import math
+from enum import auto, StrEnum
+from pathlib import Path
 from types import TracebackType
-from typing import Self
+from typing import Literal, Self
 
-from .commands import chat_command_factory, COMMAND_PREFIX
-from .enums import AuthStatus, RoRClientEvents
+from ror_server_bot import __version__
+from ror_server_bot.utils import singledispatchmethod
+
+from .enums import AuthStatus, Color, RoRClientEvents
 from .models import RoRClientConfig, Vector3
 from .ror_connection import RoRConnection
 from .stream_recorder import StreamRecorder
 
 logger = logging.getLogger(__name__)
+
+COMMAND_PREFIX = '>'
+
+
+class InvalidArgumentsError(Exception):
+    """Raised when a command is called with invalid arguments."""
+
+
+class Command(StrEnum):
+    """Enum of commands that can be executed by the bot."""
+    HELP = auto()
+    PREFIX = auto()
+    PING = auto()
+    BRB = auto()
+    AFK = auto()
+    BACK = auto()
+    GTG = auto()
+    VERSION = auto()
+    COUNTDOWN = auto()
+    MOVE_ROR_BOT = 'movebot'
+    ROTATE_ROR_BOT = 'rotatebot'
+    GET_POS = 'getpos'
+    GET_ROT = 'getrot'
+    RECORD = auto()
+    PLAYBACK = auto()
+    RECORDINGS = auto()
+
+
+class RecordingCommand(StrEnum):
+    """Enum of subcommands for stream recording commands."""
+    START = auto()
+    STOP = auto()
+    PAUSE = auto()
+    RESUME = auto()
+    PLAY = auto()
 
 
 class AnnouncementsHandler:
@@ -145,20 +185,27 @@ class RoRClient:
             await self._perform_command(uid, msg)
 
     async def _perform_command(self, uid: int, msg: str) -> None:
-        logger.info('User %d sent command: %r', uid, msg)
         try:
-            command = chat_command_factory(msg[len(COMMAND_PREFIX):])
+            cmd, *args = msg[len(COMMAND_PREFIX):].split(' ')
+            command = Command(cmd)
         except ValueError as exc:
             logger.warning(exc)
             await self.send_chat(f'Invalid command: {msg}')
             return
+
+        logger.info('[CMD] uid=%d cmd=%r args=%s', uid, command, args)
 
         # Wait a bit before executing the command to give the
         # impression that the bot is typing the response.
         await asyncio.sleep(0.2)
 
         try:
-            await command.execute(self, uid)
+            await self._execute_command(command, uid, *args, help=False)
+        except InvalidArgumentsError:
+            await self.send_chat(
+                f'Invalid arguments for command: {command.value}\n'
+                f'Use {COMMAND_PREFIX}help {command.value} for more info'
+            )
         except Exception as exc:
             logger.error(
                 'Error executing command: %r',
@@ -166,6 +213,420 @@ class RoRClient:
                 exc_info=True,
                 stacklevel=2
             )
+
+    @singledispatchmethod
+    async def _execute_command(
+        self,
+        command: Command,
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        raise NotImplementedError(f'Command {command} is not implemented')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.HELP],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Shows help for a command.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value} <command>'
+            )
+            return
+
+        match len(args):
+            case 0:
+                await self.send_chat(
+                    f'Available commands: {', '.join(map(str, Command))}\n'
+                    f'Use {COMMAND_PREFIX}help <command> for more info'
+                )
+            case 1:
+                await self._execute_command(Command(args[0]), uid, help=True)
+            case _:
+                await self._execute_command(Command.HELP, uid, help=True)
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.PREFIX],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Retrieves the command prefix.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        await self.send_chat(f'The prefix for commands is: {COMMAND_PREFIX}')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.PING],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Pings the bot.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        await self.send_chat('pong')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.BRB, Command.AFK, Command.GTG, Command.BACK],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                f'Sets your status to "{command.value}".\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        username = self.server.get_username_colored(uid)
+        match command:
+            case Command.BRB:
+                await self.send_chat(f'{username} will brb!')
+            case Command.AFK:
+                await self.send_chat(f'{username} is afk')
+            case Command.GTG:
+                await self.send_chat(f'{username} is gtg')
+            case Command.BACK:
+                await self.send_chat(f'{username} is back')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.VERSION],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Shows the version of the bot.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        await self.send_chat(f'RoR Server Bot v{__version__}')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.COUNTDOWN],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Starts a countdown.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value} <seconds>'
+            )
+            return
+
+        if len(args) != 1:
+            raise InvalidArgumentsError()
+
+        seconds = int(args[0])
+
+        if seconds < 1:
+            await self.send_chat('The countdown must be at least 1 second')
+            return
+
+        username = self.server.get_username(uid)
+        await self.send_chat(
+            f'{username} started a {seconds} second countdown!'
+        )
+
+        # start at 1 to immediately send the first countdown message
+        time: float = 1
+
+        @self.server.on(RoRClientEvents.FRAME_STEP)
+        async def on_frame_step(delta: float) -> None:
+            # nonlocal is needed to modify the time and seconds variables
+            nonlocal time, seconds
+
+            time += delta
+
+            if time >= 1:
+                if seconds > 0:
+                    await self.send_chat(f'{Color.RED}\t{seconds}')
+                    seconds -= 1
+                    time = 0
+                else:
+                    await self.send_chat(f'{Color.GREEN}\tGO!!!')
+                    self.server.remove_listener(
+                        RoRClientEvents.FRAME_STEP,
+                        on_frame_step
+                    )
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.MOVE_ROR_BOT],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Moves the bot to a different position on the map.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value} <x> <y> <z>'
+            )
+            return
+
+        if len(args) != 3:
+            raise InvalidArgumentsError()
+
+        x, y, z = map(float, args)
+        new_pos = Vector3(x=x, y=y, z=z)
+
+        await self.move_bot(new_pos)
+        await self.send_chat(f'Moved bot to {new_pos}')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.ROTATE_ROR_BOT],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Rotates the bot a number of degrees.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value} <rotation>'
+            )
+            return
+
+        if len(args) != 1:
+            raise InvalidArgumentsError()
+
+        rotation_degrees = float(args[0])
+
+        await self.rotate_bot(math.radians(rotation_degrees))
+        await self.send_chat(f'Rotated bot to {rotation_degrees}')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.GET_POS],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Gets your current position on the map.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        position = self.server.get_position(uid)
+        if position is None:
+            await self.send_chat('Could not get your position')
+        else:
+            await self.send_chat(f'Your position is: {position:.2f}')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.GET_ROT],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Gets your current rotation on the map.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        rotation_radians = self.server.get_rotation(uid)
+        if rotation_radians is None:
+            await self.send_chat('Could not get your rotation')
+        else:
+            rotation_degrees = math.degrees(rotation_radians)
+            await self.send_chat(f'Your rotation is: {rotation_degrees:.2f}')
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.RECORD],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Manage stream recordings. If a stream ID is not provided, '
+                'the current stream will be used.\n'
+                'Usages:\n'
+                + '\n'.join([
+                    f'{COMMAND_PREFIX}{command.value} {cmd.value} [sid]'
+                    for cmd in (
+                        RecordingCommand.START,
+                        RecordingCommand.STOP,
+                        RecordingCommand.PAUSE,
+                        RecordingCommand.RESUME
+                    )
+                ])
+            )
+            return
+
+        user = self.server.get_user(uid)
+        if user.auth_status not in AuthStatus.MOD | AuthStatus.ADMIN:
+            await self.send_chat('You do not have permission to do that')
+            return
+
+        match len(args):
+            case 1:
+                sid = user.current_stream.stream_id
+            case 2:
+                sid = int(args[1])
+            case _:
+                raise InvalidArgumentsError()
+
+        subcommand = RecordingCommand(args[0])
+
+        match subcommand:
+            case RecordingCommand.START:
+                filename = None  # TODO: set the filename
+                self.stream_recorder.start_recording(user.info, sid, filename)
+                await self.send_chat(f'Started recording uid={uid} sid={sid}')
+            case RecordingCommand.STOP:
+                self.stream_recorder.stop_recording(uid, sid)
+                await self.send_chat(f'Stopped recording uid={uid} sid={sid}')
+            case RecordingCommand.PAUSE:
+                self.stream_recorder.pause_recording(uid, sid)
+                await self.send_chat(f'Paused recording uid={uid} sid={sid}')
+            case RecordingCommand.RESUME:
+                self.stream_recorder.resume_recording(uid, sid)
+                await self.send_chat(f'Resumed recording uid={uid} sid={sid}')
+            case _:
+                raise InvalidArgumentsError()
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.PLAYBACK],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Control playback of a recording.\n'
+                'Usages:\n'
+                + '\n'.join([
+                    f'{COMMAND_PREFIX}{command.value} {cmd.value} [filename]'
+                    for cmd in (
+                        RecordingCommand.PLAY,
+                        RecordingCommand.STOP,
+                        RecordingCommand.PAUSE,
+                        RecordingCommand.RESUME
+                    )
+                ])
+            )
+            return
+
+        user = self.server.get_user(uid)
+        if user.auth_status not in AuthStatus.MOD | AuthStatus.ADMIN:
+            await self.send_chat('You do not have permission to do that')
+            return
+
+        if not args:
+            raise InvalidArgumentsError()
+
+        subcommand = RecordingCommand(args[0])
+
+        if len(args) > 2:
+            raise InvalidArgumentsError()
+
+        def sid() -> int | None:
+            return None if len(args) == 1 else int(args[1])
+
+        match subcommand:
+            case RecordingCommand.PLAY:
+                filename = None if len(args) == 1 else Path(args[1])
+                await self.stream_recorder.play_recording(filename)
+            case RecordingCommand.STOP:
+                await self.stream_recorder.stop_playback(sid())
+            case RecordingCommand.PAUSE:
+                self.stream_recorder.pause_playback(sid())
+            case RecordingCommand.RESUME:
+                self.stream_recorder.resume_playback(sid())
+            case _:
+                raise InvalidArgumentsError()
+
+    @_execute_command.register
+    async def _(
+        self,
+        command: Literal[Command.RECORDINGS],
+        uid: int,
+        *args: str,
+        help: bool
+    ) -> None:
+        if help:
+            await self.send_chat(
+                'Lists available recordings.\n'
+                f'Usage: {COMMAND_PREFIX}{command.value}'
+            )
+            return
+
+        user = self.server.get_user(uid)
+        if user.auth_status not in AuthStatus.MOD | AuthStatus.ADMIN:
+            await self.send_chat('You do not have permission to do that')
+            return
+
+        if args:
+            raise InvalidArgumentsError()
+
+        if self.stream_recorder.available_recordings:
+            files = '\n'.join(
+                file.name for file in
+                self.stream_recorder.available_recordings
+            )
+            await self.send_chat(f'Available recordings:\n{files}')
+        else:
+            await self.send_chat('No recordings available')
 
     async def send_chat(self, message: str) -> None:
         """Send a chat message to the server.
