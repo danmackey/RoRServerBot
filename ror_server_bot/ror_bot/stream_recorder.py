@@ -315,12 +315,15 @@ class UserRecordings(dict[int, Recording]):
         if stream.origin_source_id != user.unique_id:
             raise StreamRecordingError('ERROR-STREAM_USER_MISMATCH')
 
-        recording = Recording(
-            server=server,
-            user=user,
-            stream=stream,
-            filename=filename
-        )
+        if filename is not None:
+            recording = Recording(
+                server=server,
+                user=user,
+                stream=stream,
+                filename=filename
+            )
+        else:
+            recording = Recording(server=server, user=user, stream=stream)
 
         self[stream.origin_stream_id] = recording
 
