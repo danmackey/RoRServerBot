@@ -152,9 +152,6 @@ class User(BaseModel):
 
         distance_meters = position.distance(stream.position)
 
-        if distance_meters < 1:
-            return
-
         stream.position = position
 
         if stream.type is StreamType.CHARACTER:
