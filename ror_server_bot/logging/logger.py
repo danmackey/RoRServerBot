@@ -135,6 +135,7 @@ def get_console_handler(
             omit_repeated_times=False,
             keywords=[
                 '[CHAT]',
+                '[CMD]',
                 '[EMIT]'
                 '[EVENT]'
                 '[GCMD]',
@@ -143,8 +144,9 @@ def get_console_handler(
                 '[PCKT]',
                 '[PRIV]',
                 '[RECV]',
-                '[STREAM]',
+                '[REC]',
                 '[SEND]',
+                '[STREAM]',
                 '[USER]',
             ]
         )
