@@ -1,3 +1,4 @@
+from datetime import datetime
 import gzip
 import logging
 import sys
@@ -12,6 +13,10 @@ MSEC_FMT = '%s.%04d'
 LogLevel = Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 ConsoleStyle = Literal['rich', 'basic']
 FileType = Literal['gzip', 'log']
+
+
+def dt_fmt() -> str:
+    return datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
 
 
 class GzipStreamHandler(logging.StreamHandler):
@@ -55,7 +60,7 @@ def get_log_handler(
     :param formatter: The formatter to use
     :return: A logging handler that will write to the log file
     """
-    log_file = path / 'ror_server_bot.log'
+    log_file = path / f'ror_server_bot-{dt_fmt()}.log'
 
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(formatter)
@@ -73,7 +78,7 @@ def get_gzip_handler(
     :param formatter: The formatter to use
     :return: A GzipStreamHandler
     """
-    log_file_gz = path / 'ror_server_bot.log.gz'
+    log_file_gz = path / f'ror_server_bot-{dt_fmt()}.log.gz'
 
     gz_handler = GzipStreamHandler(filename=log_file_gz)
     gz_handler.setFormatter(formatter)
