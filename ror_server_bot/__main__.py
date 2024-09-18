@@ -3,29 +3,26 @@ import logging
 from pathlib import Path
 
 import discord
+import yaml
 
 from ror_server_bot.logging import configure_logging
 
-from .ror_bot import (
-    Announcements,
-    RoRClient,
-    RoRClientConfig,
-    ServerConfig,
-    UserConfig,
-)
+from .ror_bot import RoRClient, RoRClientConfig
 
 logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
     configure_logging(
-        console_log_level='DEBUG',
+        console_log_level='INFO',
         console_style='rich',
         file_type='log',
         log_dir=Path.cwd() / 'logs',
     )
 
     def start() -> None:
+        return
+
         class DiscordClient:
             pass
 
@@ -38,31 +35,8 @@ if __name__ == '__main__':
         )
         client.run(client.config.discord_bot_token)
 
-    config = RoRClientConfig(
-        id='1',
-        enabled=True,
-        server=ServerConfig(
-            host='10.90.1.64',
-            port=12000,
-            password=''
-        ),
-        user=UserConfig(
-            token=''
-        ),
-        discord_channel_id=-1,
-        announcements=Announcements(
-            delay=10,
-            enabled=False,
-            messages=[
-                'Hello, World!',
-                'This is a test announcement!',
-                'This is another test announcement!',
-                'This is the last test announcement!'
-            ]
-        ),
-        reconnection_interval=1,
-        reconnection_tries=3,
-    )
+    with open('bot.yaml') as f:
+        config = RoRClientConfig.model_validate(yaml.safe_load(f))
 
     client = RoRClient(config)
 

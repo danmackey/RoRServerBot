@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-extra-types~=2.1.0",
     "pydantic~=2.3.0",
     "pyee~=11.0.0",
+    "pyyaml~=6.0.2",
     "requests~=2.28.1",
     "rich~=13.5.2",
 ]
@@ -24,7 +25,7 @@ dynamic = ["version"]
 "Source code" = "https://github.com/danmackey/RoRServerBot"
 
 [tool.hatch.envs.default]
-dependencies = ["isort", "mypy", "ruff", "tox"]
+dependencies = ["isort", "mypy", "ruff", "tox", "types-pyyaml"]
 path = ".venv"
 
 [tool.hatch.publish.index]
@@ -45,7 +46,6 @@ multi_line_output = 3
 include_trailing_comma = true
 
 [tool.mypy]
-mypy_path = "./ror_server_bot"
 python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
@@ -99,5 +99,9 @@ ignore = [
 ]
 
 
-[tool.ruff.pep8-naming]
-classmethod-decorators = ["classmethod", "pydantic.field_validator"]
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = [
+    "classmethod",
+    "pydantic.validator",
+    "pydantic.field_validator"
+]
