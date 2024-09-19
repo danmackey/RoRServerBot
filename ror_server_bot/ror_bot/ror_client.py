@@ -53,22 +53,30 @@ class RecordingCommand(StrEnum):
 
 
 class AnnouncementsHandler:
-    def __init__(self, delay: int, messages: list[str], color: str) -> None:
+    def __init__(
+        self,
+        delay: int,
+        enabled: bool,
+        messages: list[str],
+        color: str
+    ) -> None:
         """Create a new AnnouncementsHandler.
 
         :param delay: The delay between announcements in seconds.
+        :param enabled: Whether announcements are enabled.
         :param messages: The messages to announce.
         :param color: The color to use for the announcements.
         """
         self._delay = delay
+        self._enabled = enabled
         self._messages = messages
         self._color = color
         self._time: float = 0
         self._idx: int = 0
 
     def try_next(self, delta: float) -> str | None:
-        """Try to get the next announcement. Returns None if no
-        announcement is ready. Otherwise, returns the announcement.
+        """Try to get the next announcement. Returns None if disabled or
+        no announcement is ready. Otherwise, returns the announcement.
 
         The announcement format is as follows:
         ```
@@ -80,6 +88,9 @@ class AnnouncementsHandler:
         :param delta: The time since the last frame step.
         :return: The announcement if one is ready, otherwise None.
         """
+        if not self._enabled:
+            return None
+
         self._time += delta
 
         if self._time >= self._delay:
@@ -118,9 +129,9 @@ class RoRClient:
 
         self.stream_recorder = StreamRecorder(self.server)
 
-        self._announcements_enabled = client_config.announcements.enabled
         self._announcements_handler = AnnouncementsHandler(
             delay=client_config.announcements.delay,
+            enabled=client_config.announcements.enabled,
             messages=client_config.announcements.messages,
             color=client_config.announcements.color,
         )
@@ -174,11 +185,10 @@ class RoRClient:
         await self.server.__aexit__(exc_type, exc_val, exc_tb)
 
     async def _on_frame_step(self, delta: float) -> None:
-        if self._announcements_enabled:
-            message = self._announcements_handler.try_next(delta)
+        message = self._announcements_handler.try_next(delta)
 
-            if message is not None:
-                await self.server.send_chat(message)
+        if message is not None:
+            await self.server.send_chat(message)
 
     async def _on_chat(self, uid: int, msg: str) -> None:
         if msg.startswith(COMMAND_PREFIX):
