@@ -38,14 +38,11 @@ if __name__ == '__main__':
         )
         client.run(client.config.discord_bot_token)
 
-    with open('bot.yaml') as f:
-        config = RoRClientConfig.model_validate(yaml.safe_load(f))
-
-    client = RoRClient(config)
+    clients = [RoRClient(client_cfg) for client_cfg in config.ror_clients]
 
     async def main() -> None:
-        async with client:
-            while True:
-                await asyncio.sleep(0.1)
+        async with asyncio.TaskGroup() as tg:
+            for client in clients:
+                tg.create_task(client.start())
 
     asyncio.run(main())

@@ -639,6 +639,12 @@ class RoRClient:
         else:
             await self.send_chat('No recordings available')
 
+    async def start(self) -> None:
+        """Start the RoR client."""
+        async with self:
+            while True:
+                await asyncio.sleep(0.1)
+
     async def send_chat(self, message: str) -> None:
         """Send a chat message to the server.
 
