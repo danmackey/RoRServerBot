@@ -7,10 +7,11 @@ from types import TracebackType
 from typing import Literal, Self
 
 from ror_server_bot import __version__
+from ror_server_bot.config import RoRClientConfig
 from ror_server_bot.utils import singledispatchmethod
 
 from .enums import AuthStatus, Color, RoRClientEvents
-from .models import RoRClientConfig, Vector3
+from .models import Vector3
 from .ror_connection import RoRConnection
 from .stream_recorder import StreamRecorder
 

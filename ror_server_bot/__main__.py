@@ -7,17 +7,20 @@ import yaml
 
 from ror_server_bot.logging import configure_logging
 
-from .ror_bot import RoRClient, RoRClientConfig
+from .ror_bot import RoRClient
+from .config import parse_file
 
 logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
+    config = parse_file(Path('config.yaml'))
+
     configure_logging(
-        console_log_level='INFO',
-        console_style='rich',
-        file_type='log',
-        log_dir=Path.cwd() / 'logs',
+        console_log_level=config.console_log_level,
+        console_style=config.console_style,
+        file_type=config.log_file_type,
+        log_dir=config.log_folder,
     )
 
     def start() -> None:

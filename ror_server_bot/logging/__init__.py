@@ -1,5 +1,5 @@
 from .formatter import pformat
-from .logger import configure_logging, ConsoleStyle, LogLevel
+from .logger import configure_logging, ConsoleStyle, FileType, LogLevel
 
 __all__ = [
     # .formatter
@@ -7,5 +7,6 @@ __all__ = [
     # .logger
     'configure_logging',
     'ConsoleStyle',
+    'FileType',
     'LogLevel',
 ]

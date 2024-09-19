@@ -1,10 +1,3 @@
-from .config import (
-    Announcements,
-    Config,
-    RoRClientConfig,
-    ServerConfig,
-    UserConfig,
-)
 from .messages import (
     ActorStreamData,
     ActorStreamRegister,
@@ -51,12 +44,6 @@ from .truck_file import TruckFile
 from .vector import Vector3
 
 __all__ = [
-    # .config
-    'Announcements',
-    'Config',
-    'RoRClientConfig',
-    'ServerConfig',
-    'UserConfig',
     # .messages
     'ActorStreamData',
     'ActorStreamRegister',
