@@ -6,14 +6,14 @@
         {
             "label": "Tox",
             "icon": {
-                "id": "beaker",
+                "id": "beaker"
             },
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",
             "type": "process",
             "args": [
                 "-m",
                 "tox",
-                "--parallel=auto",
+                "--parallel=auto"
             ],
             "group": {
                 "kind": "test",
@@ -26,7 +26,7 @@
                 "panel": "shared",
                 "showReuseMessage": true,
                 "clear": false
-            },
+            }
         },
         {
             "label": "Sync Dependencies",
@@ -53,6 +53,7 @@
                 "showReuseMessage": true,
                 "clear": false
             },
-        },
+            "problemMatcher": []
+        }
     ]
 }
