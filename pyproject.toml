@@ -9,6 +9,7 @@ readme = "README.md"
 authors = [{ name = "Danny Mackey", email = "danmack768@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
+    "click~=8.1.7",
     "defusedxml~=0.7.1",
     "devtools~=0.12.1",
     "discord.py~=2.3.2",
@@ -26,7 +27,14 @@ dynamic = ["version"]
 "Source code" = "https://github.com/danmackey/RoRServerBot"
 
 [tool.hatch.envs.default]
-dependencies = ["isort", "mypy", "ruff", "tox", "types-pyyaml"]
+dependencies = [
+    "isort",
+    "mypy",
+    "ruff",
+    "tox",
+    "types-defusedxml",
+    "types-pyyaml",
+]
 path = ".venv"
 
 [tool.hatch.publish.index]
@@ -104,5 +112,5 @@ ignore = [
 classmethod-decorators = [
     "classmethod",
     "pydantic.validator",
-    "pydantic.field_validator"
+    "pydantic.field_validator",
 ]
