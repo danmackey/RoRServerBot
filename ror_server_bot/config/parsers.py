@@ -1,4 +1,5 @@
 from pathlib import Path
+from xml.etree.ElementTree import Element
 
 import yaml
 from defusedxml import ElementTree
@@ -29,6 +30,7 @@ def parse_json(file_path: Path) -> Config:
     """
     return Config.model_validate_json(file_path.read_text())
 
+
 def parse_xml(file_path: Path) -> Config:
     """Parse an xml file into a Config object.
 
@@ -38,38 +40,46 @@ def parse_xml(file_path: Path) -> Config:
     tree = ElementTree.parse(file_path)
     root = tree.getroot()
 
+    def find(element: Element, tag: str) -> Element:
+        _element = element.find(tag)
+        if _element is None:
+            raise ValueError(f'Element {tag} not found')
+        return _element
+
     return Config(
-        truck_blacklist=Path(root.find('truck_blacklist').text),
+        truck_blacklist=find(root, 'truck_blacklist').text,
         ror_clients=[
             RoRClientConfig(
-                id=client.find('id').text,
-                enabled=client.find('enabled').text,
+                id=find(client, 'id').text,
+                enabled=find(client, 'enabled').text,
                 server=ServerConfig(
-                    host=client.find('server/host').text,
-                    port=client.find('server/port').text,
-                    password=client.find('server/password').text,
+                    host=find(client, 'server/host').text,
+                    port=find(client, 'server/port').text,
+                    password=find(client, 'server/password').text,
                 ),
                 user=UserConfig(
-                    name=client.find('user/name').text,
-                    token=client.find('user/token').text,
-                    language=client.find('user/language').text,
+                    name=find(client, 'user/name').text,
+                    token=find(client, 'user/token').text,
+                    language=find(client, 'user/language').text,
                 ),
-                discord_channel_id=client.find('discord_channel_id').text,
+                discord_channel_id=find(client, 'discord_channel_id').text,
                 announcements=Announcements(
                     messages=[
                         message.text for message in
-                        client.find('announcements/messages')
+                        find(client, 'announcements/messages')
                     ],
-                    delay=client.find('announcements/delay').text,
-                    color=client.find('announcements/color').text,
-                    enabled=client.find('announcements/enabled').text,
+                    delay=find(client, 'announcements/delay').text,
+                    color=find(client, 'announcements/color').text,
+                    enabled=find(client, 'announcements/enabled').text,
                 ),
-                reconnection_interval=client.find('reconnection_interval').text,
-                reconnection_tries=client.find('reconnection_tries').text,
+                reconnection_interval=find(
+                    client, 'reconnection_interval').text,
+                reconnection_tries=find(client, 'reconnection_tries').text,
             )
-            for client in root.find('ror_clients')
+            for client in find(root, 'ror_clients')
         ],
     )
+
 
 def parse_file(file_path: Path) -> Config:
     """Parse a file into a Config object.
