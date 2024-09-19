@@ -50,6 +50,9 @@ class singledispatchmethod:  # noqa: N801
                     'Use either `@register(EnumClass.value)`, '
                     'or plain `@register` on an annotated function.'
                 )
+
+            assert callable(enum)
+
             func = enum
 
             # only import typing if annotation parsing is necessary
@@ -71,14 +74,20 @@ class singledispatchmethod:  # noqa: N801
             from typing import get_args
 
             for arg in get_args(enum):
+                assert isinstance(arg, Enum)
                 self.dispatcher[arg] = func
         else:
+            assert isinstance(enum, Enum)
             self.dispatcher[enum] = func
 
         return func
 
-    def __get__(self, obj: object, cls: type[object] | None = None) -> Callable:
-        def _method(*args, **kwargs) -> Any:
+    def __get__(
+        self,
+        obj: object,
+        cls: type[object] | None = None
+    ) -> Callable:
+        def _method(*args: Any, **kwargs: dict[str, Any]) -> Any:
             method = self.dispatcher[args[0]]
             return method.__get__(obj, cls)(*args, **kwargs)
 

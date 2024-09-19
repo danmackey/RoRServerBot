@@ -3,12 +3,11 @@ import logging
 from pathlib import Path
 
 import discord
-import yaml
 
 from ror_server_bot.logging import configure_logging
 
-from .ror_bot import RoRClient
 from .config import parse_file
+from .ror_bot import RoRClient
 
 logger = logging.getLogger(__name__)
 

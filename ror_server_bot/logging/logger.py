@@ -1,7 +1,7 @@
-from datetime import datetime
 import gzip
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Literal, overload
 
